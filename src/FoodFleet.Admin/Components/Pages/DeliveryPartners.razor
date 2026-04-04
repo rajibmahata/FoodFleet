@@ -1,0 +1,242 @@
+@page "/delivery-partners"
+@attribute [Authorize]
+@inject AdminApiClient Api
+
+<PageTitle>Delivery Partners – FoodFleet Admin</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Delivery Partners</h3>
+    <button class="btn btn-primary" @onclick="OpenCreate">+ New Partner</button>
+</div>
+
+@* ── Filter ── *@
+<div class="mb-3" style="max-width:280px">
+    <select class="form-select" @onchange="OnBranchChanged">
+        <option value="">All Branches</option>
+        @foreach (var b in _branches)
+        {
+            <option value="@b.Id">@b.Name</option>
+        }
+    </select>
+</div>
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+@if (!string.IsNullOrEmpty(_success))
+{
+    <div class="alert alert-success">@_success</div>
+}
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center mt-4"><div class="spinner-border text-primary"></div></div>
+}
+else
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>Vehicle</th>
+                        <th>Branch</th>
+                        <th>Available</th>
+                        <th>Orders Completed</th>
+                        <th>Rating</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_partners.Count == 0)
+                    {
+                        <tr><td colspan="8" class="text-center text-muted py-3">No partners found.</td></tr>
+                    }
+                    @foreach (var p in _partners)
+                    {
+                        <tr>
+                            <td>@p.Name</td>
+                            <td>@p.PhoneNumber</td>
+                            <td>@p.VehicleType</td>
+                            <td>@p.BranchName</td>
+                            <td>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" checked="@p.IsAvailable"
+                                           @onchange="e => ToggleAvailability(p, e)" />
+                                </div>
+                            </td>
+                            <td>@p.TotalOrdersCompleted</td>
+                            <td>
+                                @if (p.AverageRating.HasValue)
+                                {
+                                    <span>@p.AverageRating.Value.ToString("0.1") ⭐</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => OpenEdit(p)">Edit</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (_showModal)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.4)">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_editId == null ? "New Delivery Partner" : "Edit Partner")</h5>
+                    <button type="button" class="btn-close" @onclick="() => _showModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(_modalError)) { <div class="alert alert-danger">@_modalError</div> }
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Full Name *</label>
+                            <input class="form-control" @bind="_form.Name" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Phone *</label>
+                            <input class="form-control" @bind="_form.PhoneNumber" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input class="form-control" type="email" @bind="_form.Email" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Vehicle Type</label>
+                            <select class="form-select" @bind="_form.VehicleType">
+                                <option>Bicycle</option>
+                                <option>Motorcycle</option>
+                                <option>Car</option>
+                                <option>Scooter</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Branch *</label>
+                            <select class="form-select" @bind="_form.BranchId">
+                                <option value="">— Select —</option>
+                                @foreach (var b in _branches)
+                                {
+                                    <option value="@b.Id">@b.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => _showModal = false">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SavePartner" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> } Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<BranchDto> _branches = new();
+    private List<DeliveryPartnerDto> _partners = new();
+    private bool _loading = true;
+    private string _error = string.Empty;
+    private string _success = string.Empty;
+    private Guid? _filterBranchId;
+
+    private bool _showModal;
+    private bool _saving;
+    private string _modalError = string.Empty;
+    private Guid? _editId;
+    private PartnerFormModel _form = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var r = await Api.GetBranchesAsync();
+        if (r.IsSuccess) _branches = r.Data ?? new();
+        await LoadPartners();
+    }
+
+    private async Task OnBranchChanged(ChangeEventArgs e)
+    {
+        _filterBranchId = Guid.TryParse(e.Value?.ToString(), out var bid) ? bid : null;
+        await LoadPartners();
+    }
+
+    private async Task LoadPartners()
+    {
+        _loading = true; _error = string.Empty;
+        var r = await Api.GetDeliveryPartnersAsync(_filterBranchId);
+        if (r.IsSuccess) _partners = r.Data ?? new();
+        else _error = r.Error ?? "Failed to load delivery partners.";
+        _loading = false;
+    }
+
+    private void OpenCreate()
+    {
+        _editId = null;
+        _form = new();
+        _modalError = string.Empty;
+        _showModal = true;
+    }
+
+    private void OpenEdit(DeliveryPartnerDto p)
+    {
+        _editId = p.Id;
+        _form = new PartnerFormModel
+        {
+            Name = p.Name, PhoneNumber = p.PhoneNumber,
+            Email = p.Email ?? string.Empty, VehicleType = p.VehicleType,
+            BranchId = p.BranchId.ToString()
+        };
+        _modalError = string.Empty;
+        _showModal = true;
+    }
+
+    private async Task SavePartner()
+    {
+        if (string.IsNullOrWhiteSpace(_form.Name) || string.IsNullOrWhiteSpace(_form.PhoneNumber))
+        {
+            _modalError = "Name and phone are required."; return;
+        }
+        if (!Guid.TryParse(_form.BranchId, out var branchId))
+        {
+            _modalError = "Please select a branch."; return;
+        }
+        _saving = true; _modalError = string.Empty;
+
+        var r = await Api.CreateDeliveryPartnerAsync(new CreateDeliveryPartnerRequest(
+            branchId, _form.Name, _form.PhoneNumber, _form.Email, _form.VehicleType));
+
+        _saving = false;
+        if (r.IsSuccess) { _showModal = false; _success = "Partner saved."; await LoadPartners(); }
+        else _modalError = r.Error ?? "Save failed.";
+    }
+
+    private async Task ToggleAvailability(DeliveryPartnerDto p, ChangeEventArgs e)
+    {
+        var available = (bool)(e.Value ?? false);
+        var r = await Api.ToggleDeliveryPartnerAvailabilityAsync(p.Id, available);
+        if (r.IsSuccess) { p.IsAvailable = available; _success = $"{p.Name} availability updated."; }
+        else _error = r.Error ?? "Failed.";
+    }
+
+    private class PartnerFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string VehicleType { get; set; } = "Motorcycle";
+        public string BranchId { get; set; } = string.Empty;
+    }
+}

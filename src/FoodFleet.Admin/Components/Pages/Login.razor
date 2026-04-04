@@ -1,0 +1,86 @@
+@page "/login"
+@layout FoodFleet.Admin.Components.Layout.MainLayout
+@inject AdminApiClient Api
+@inject AdminAuthStateProvider AuthProvider
+@inject NavigationManager Nav
+
+<PageTitle>Login – FoodFleet Admin</PageTitle>
+
+<div class="d-flex justify-content-center align-items-center" style="min-height:80vh">
+    <div class="card shadow" style="width:400px">
+        <div class="card-body p-4">
+            <h3 class="card-title text-center mb-4">FoodFleet Admin</h3>
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <div class="alert alert-danger">@_error</div>
+            }
+
+            <EditForm Model="_model" OnValidSubmit="HandleLogin">
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <InputText @bind-Value="_model.Email" class="form-control" placeholder="admin@foodfleet.com" />
+                    <ValidationMessage For="@(() => _model.Email)" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Password</label>
+                    <InputText @bind-Value="_model.Password" type="password" class="form-control" />
+                    <ValidationMessage For="@(() => _model.Password)" />
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100" disabled="@_loading">
+                    @if (_loading)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    Login
+                </button>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginModel _model = new();
+    private string _error = string.Empty;
+    private bool _loading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+            Nav.NavigateTo("/dashboard");
+    }
+
+    private async Task HandleLogin()
+    {
+        _loading = true;
+        _error = string.Empty;
+
+        var result = await Api.LoginAsync(new AdminLoginRequest(_model.Email, _model.Password));
+        if (result.IsSuccess && result.Data is not null)
+        {
+            await AuthProvider.MarkUserAsAuthenticated(result.Data.AccessToken);
+            Nav.NavigateTo("/dashboard");
+        }
+        else
+        {
+            _error = result.Error ?? "Login failed. Check your credentials.";
+        }
+
+        _loading = false;
+    }
+
+    private class LoginModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Password { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FoodFleet.Admin/FoodFleet.Admin.csproj" />
+    <Project Path="src/FoodFleet.API/FoodFleet.API.csproj" />
+    <Project Path="src/FoodFleet.Application/FoodFleet.Application.csproj" />
+    <Project Path="src/FoodFleet.Domain/FoodFleet.Domain.csproj" />
+    <Project Path="src/FoodFleet.Infrastructure/FoodFleet.Infrastructure.csproj" />
+    <Project Path="src/FoodFleet.Web/FoodFleet.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FoodFleet.Tests.Integration/FoodFleet.Tests.Integration.csproj" />
+    <Project Path="tests/FoodFleet.Tests.Unit/FoodFleet.Tests.Unit.csproj" />
+  </Folder>
+</Solution>

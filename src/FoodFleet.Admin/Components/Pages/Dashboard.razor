@@ -1,0 +1,156 @@
+@page "/dashboard"
+@attribute [Authorize]
+@inject AdminApiClient Api
+
+<PageTitle>Dashboard – FoodFleet Admin</PageTitle>
+
+<h3 class="mb-4">Dashboard</h3>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center mt-5">
+        <div class="spinner-border text-primary"></div>
+    </div>
+}
+else if (!string.IsNullOrEmpty(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else if (_data is not null)
+{
+    <div class="row g-3 mb-4">
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <div class="card border-0 shadow-sm text-center p-3">
+                <div class="text-muted small">Today's Orders</div>
+                <div class="fs-3 fw-bold text-primary">@_data.TodaysOrders</div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <div class="card border-0 shadow-sm text-center p-3">
+                <div class="text-muted small">Today's Revenue</div>
+                <div class="fs-3 fw-bold text-success">₹@_data.TodaysRevenue.ToString("N0")</div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <div class="card border-0 shadow-sm text-center p-3">
+                <div class="text-muted small">Pending Orders</div>
+                <div class="fs-3 fw-bold text-warning">@_data.PendingOrders</div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <div class="card border-0 shadow-sm text-center p-3">
+                <div class="text-muted small">Active Branches</div>
+                <div class="fs-3 fw-bold text-info">@_data.ActiveBranches</div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <div class="card border-0 shadow-sm text-center p-3">
+                <div class="text-muted small">Low Stock Items</div>
+                <div class="fs-3 fw-bold text-danger">@_data.LowStockItems</div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <div class="card border-0 shadow-sm text-center p-3">
+                <div class="text-muted small">Avg. Prep Time</div>
+                <div class="fs-3 fw-bold">@_data.AvgPrepTimeMinutes<span class="fs-6 text-muted"> min</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent fw-semibold">Recent Orders</div>
+                <div class="card-body p-0">
+                    @if (_data.RecentOrders.Count == 0)
+                    {
+                        <p class="text-muted text-center py-3">No recent orders</p>
+                    }
+                    else
+                    {
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Order #</th>
+                                    <th>Branch</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var o in _data.RecentOrders)
+                                {
+                                    <tr>
+                                        <td>@o.OrderNumber</td>
+                                        <td>@o.BranchName</td>
+                                        <td><span class="badge @StatusBadge(o.Status)">@o.Status</span></td>
+                                        <td class="text-end">₹@o.TotalAmount.ToString("N0")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent fw-semibold">Top Menu Items</div>
+                <div class="card-body p-0">
+                    @if (_data.TopMenuItems.Count == 0)
+                    {
+                        <p class="text-muted text-center py-3">No data yet</p>
+                    }
+                    else
+                    {
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Item</th>
+                                    <th class="text-end">Orders</th>
+                                    <th class="text-end">Revenue</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in _data.TopMenuItems)
+                                {
+                                    <tr>
+                                        <td>@item.Name</td>
+                                        <td class="text-end">@item.OrderCount</td>
+                                        <td class="text-end">₹@item.Revenue.ToString("N0")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private DashboardSummaryDto? _data;
+    private bool _loading = true;
+    private string _error = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Api.GetDashboardAsync();
+        if (result.IsSuccess)
+            _data = result.Data;
+        else
+            _error = result.Error ?? "Failed to load dashboard.";
+        _loading = false;
+    }
+
+    private static string StatusBadge(string status) => status switch
+    {
+        "Delivered" => "bg-success",
+        "Cancelled" => "bg-danger",
+        "OutForDelivery" => "bg-info",
+        "Preparing" => "bg-warning text-dark",
+        _ => "bg-secondary"
+    };
+}

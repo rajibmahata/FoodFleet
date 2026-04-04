@@ -1,0 +1,444 @@
+@page "/menu"
+@attribute [Authorize]
+@inject AdminApiClient Api
+
+<PageTitle>Menu – FoodFleet Admin</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Menu Management</h3>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-success" @onclick="ExportExcel" disabled="@(_selectedBranchId == Guid.Empty)">
+            Export Excel
+        </button>
+        <label class="btn btn-outline-primary mb-0" style="cursor:pointer">
+            Import Excel
+            <InputFile OnChange="ImportExcel" accept=".xlsx" style="display:none" />
+        </label>
+    </div>
+</div>
+
+@if (_branches.Count > 0)
+{
+    <div class="mb-3" style="max-width:300px">
+        <select class="form-select" @onchange="OnBranchChanged">
+            <option value="">— Select Branch —</option>
+            @foreach (var b in _branches)
+            {
+                <option value="@b.Id">@b.Name</option>
+            }
+        </select>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+@if (!string.IsNullOrEmpty(_success))
+{
+    <div class="alert alert-success">@_success</div>
+}
+
+@if (_selectedBranchId != Guid.Empty)
+{
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="mb-0">Categories</h5>
+        <button class="btn btn-sm btn-primary" @onclick="OpenCreateCategory">+ Category</button>
+    </div>
+
+    @if (_loadingMenu)
+    {
+        <div class="spinner-border text-primary"></div>
+    }
+    else
+    {
+        @foreach (var cat in _categories)
+        {
+            <div class="card mb-3 border-0 shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center bg-light">
+                    <strong>@cat.Name</strong>
+                    <div>
+                        <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditCategory(cat)">Edit</button>
+                        <button class="btn btn-sm btn-outline-danger me-2" @onclick="() => ConfirmDeleteCategory(cat)">Delete</button>
+                        <button class="btn btn-sm btn-success" @onclick="() => OpenCreateItem(cat)">+ Item</button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    @if (_items.ContainsKey(cat.Id) && _items[cat.Id].Count > 0)
+                    {
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Price</th>
+                                    <th>Stock</th>
+                                    <th>Available</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in _items[cat.Id])
+                                {
+                                    <tr>
+                                        <td>@item.Name</td>
+                                        <td>₹@item.Price.ToString("N2")</td>
+                                        <td>
+                                            <input type="number" class="form-control form-control-sm" style="width:80px"
+                                                   value="@item.StockCount"
+                                                   @onchange="e => UpdateStock(item, e)" />
+                                        </td>
+                                        <td>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" checked="@item.IsAvailable"
+                                                       @onchange="e => ToggleAvailability(item, e)" />
+                                            </div>
+                                        </td>
+                                        <td class="text-end">
+                                            <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditItem(item)">Edit</button>
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDeleteItem(item)">Delete</button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <p class="text-muted text-center py-2">No items in this category.</p>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (_categories.Count == 0)
+        {
+            <p class="text-muted">No categories yet. Create one above.</p>
+        }
+    }
+}
+
+@* ─── Category Modal ─── *@
+@if (_showCatModal)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.4)">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_editCatId == null ? "New Category" : "Edit Category")</h5>
+                    <button type="button" class="btn-close" @onclick="() => _showCatModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(_catModalError)) { <div class="alert alert-danger">@_catModalError</div> }
+                    <div class="mb-3">
+                        <label class="form-label">Name *</label>
+                        <input class="form-control" @bind="_catName" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Sort Order</label>
+                        <input class="form-control" type="number" @bind="_catSortOrder" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => _showCatModal = false">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveCategory" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> } Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ─── Item Modal ─── *@
+@if (_showItemModal)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.4)">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_editItemId == null ? "New Menu Item" : "Edit Menu Item")</h5>
+                    <button type="button" class="btn-close" @onclick="() => _showItemModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(_itemModalError)) { <div class="alert alert-danger">@_itemModalError</div> }
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label">Name *</label>
+                            <input class="form-control" @bind="_itemForm.Name" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Price *</label>
+                            <input class="form-control" type="number" step="0.01" @bind="_itemForm.Price" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" rows="2" @bind="_itemForm.Description"></textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Category</label>
+                            <select class="form-select" @bind="_itemForm.CategoryId">
+                                @foreach (var c in _categories)
+                                {
+                                    <option value="@c.Id">@c.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Prep Time (min)</label>
+                            <input class="form-control" type="number" @bind="_itemForm.PreparationTimeMinutes" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Stock Count</label>
+                            <input class="form-control" type="number" @bind="_itemForm.StockCount" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Spice Level (0-5)</label>
+                            <input class="form-control" type="number" min="0" max="5" @bind="_itemForm.SpiceLevel" />
+                        </div>
+                        <div class="col-md-8 d-flex gap-3 align-items-center">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="chkVeg" @bind="_itemForm.IsVegetarian" />
+                                <label class="form-check-label" for="chkVeg">Vegetarian</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="chkVegan" @bind="_itemForm.IsVegan" />
+                                <label class="form-check-label" for="chkVegan">Vegan</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="chkGF" @bind="_itemForm.IsGlutenFree" />
+                                <label class="form-check-label" for="chkGF">Gluten-Free</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => _showItemModal = false">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveItem" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> } Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ─── Delete Confirm ─── *@
+@if (_deleteMessage is not null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.4)">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" @onclick="() => _deleteAction = null"></button>
+                </div>
+                <div class="modal-body">@_deleteMessage</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => _deleteAction = null">Cancel</button>
+                    <button class="btn btn-danger" @onclick="ExecuteDelete">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<BranchDto> _branches = new();
+    private Guid _selectedBranchId = Guid.Empty;
+    private bool _loadingMenu;
+    private string _error = string.Empty;
+    private string _success = string.Empty;
+    private List<MenuCategoryDto> _categories = new();
+    private Dictionary<Guid, List<MenuItemDto>> _items = new();
+    private bool _saving;
+
+    // Category modal
+    private bool _showCatModal;
+    private Guid? _editCatId;
+    private string _catName = string.Empty;
+    private int _catSortOrder;
+    private string _catModalError = string.Empty;
+
+    // Item modal
+    private bool _showItemModal;
+    private Guid? _editItemId;
+    private Guid _itemCategoryId;
+    private ItemFormModel _itemForm = new();
+    private string _itemModalError = string.Empty;
+
+    // Delete
+    private string? _deleteMessage;
+    private Func<Task>? _deleteAction;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var r = await Api.GetBranchesAsync();
+        if (r.IsSuccess) _branches = r.Data ?? new();
+    }
+
+    private async Task OnBranchChanged(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var id))
+        {
+            _selectedBranchId = id;
+            await LoadMenu();
+        }
+        else
+        {
+            _selectedBranchId = Guid.Empty;
+            _categories = new();
+            _items = new();
+        }
+    }
+
+    private async Task LoadMenu()
+    {
+        _loadingMenu = true;
+        _error = string.Empty;
+        var catResult = await Api.GetMenuCategoriesAsync(_selectedBranchId);
+        if (!catResult.IsSuccess) { _error = catResult.Error ?? "Failed to load categories."; _loadingMenu = false; return; }
+        _categories = catResult.Data ?? new();
+
+        _items = new();
+        foreach (var cat in _categories)
+        {
+            var itemResult = await Api.GetMenuItemsAsync(cat.Id);
+            _items[cat.Id] = itemResult.IsSuccess ? (itemResult.Data ?? new()) : new();
+        }
+        _loadingMenu = false;
+    }
+
+    // ── Category actions ──
+    private void OpenCreateCategory() { _editCatId = null; _catName = string.Empty; _catSortOrder = 0; _catModalError = string.Empty; _showCatModal = true; }
+    private void OpenEditCategory(MenuCategoryDto c) { _editCatId = c.Id; _catName = c.Name; _catSortOrder = c.SortOrder; _catModalError = string.Empty; _showCatModal = true; }
+
+    private async Task SaveCategory()
+    {
+        if (string.IsNullOrWhiteSpace(_catName)) { _catModalError = "Name required."; return; }
+        _saving = true; _catModalError = string.Empty;
+        ApiResult<MenuCategoryDto> r;
+        if (_editCatId is null)
+            r = await Api.CreateMenuCategoryAsync(new CreateMenuCategoryRequest(_selectedBranchId, _catName, _catSortOrder));
+        else
+            r = await Api.UpdateMenuCategoryAsync(_editCatId.Value, new UpdateMenuCategoryRequest(_catName, _catSortOrder));
+        _saving = false;
+        if (r.IsSuccess) { _showCatModal = false; await LoadMenu(); }
+        else _catModalError = r.Error ?? "Save failed.";
+    }
+
+    private void ConfirmDeleteCategory(MenuCategoryDto c)
+    {
+        _deleteMessage = $"Delete category '{c.Name}'? All items inside will also be deleted.";
+        _deleteAction = async () =>
+        {
+            var r = await Api.DeleteMenuCategoryAsync(c.Id);
+            if (!r.IsSuccess) _error = r.Error ?? "Delete failed.";
+            else await LoadMenu();
+        };
+    }
+
+    // ── Item actions ──
+    private void OpenCreateItem(MenuCategoryDto cat) { _editItemId = null; _itemCategoryId = cat.Id; _itemForm = new ItemFormModel { CategoryId = cat.Id }; _itemModalError = string.Empty; _showItemModal = true; }
+    private void OpenEditItem(MenuItemDto item)
+    {
+        _editItemId = item.Id;
+        _itemCategoryId = item.CategoryId;
+        _itemForm = new ItemFormModel
+        {
+            Name = item.Name, Description = item.Description ?? string.Empty, Price = item.Price,
+            CategoryId = item.CategoryId, PreparationTimeMinutes = item.PreparationTimeMinutes,
+            StockCount = item.StockCount, IsVegetarian = item.IsVegetarian,
+            IsVegan = item.IsVegan, IsGlutenFree = item.IsGlutenFree, SpiceLevel = item.SpiceLevel
+        };
+        _itemModalError = string.Empty;
+        _showItemModal = true;
+    }
+
+    private async Task SaveItem()
+    {
+        if (string.IsNullOrWhiteSpace(_itemForm.Name)) { _itemModalError = "Name required."; return; }
+        _saving = true; _itemModalError = string.Empty;
+        ApiResult<MenuItemDto> r;
+        if (_editItemId is null)
+            r = await Api.CreateMenuItemAsync(new CreateMenuItemRequest(
+                _itemForm.CategoryId, _itemForm.Name, _itemForm.Description, _itemForm.Price,
+                _itemForm.PreparationTimeMinutes, _itemForm.StockCount, _itemForm.IsVegetarian,
+                _itemForm.IsVegan, _itemForm.IsGlutenFree, _itemForm.SpiceLevel));
+        else
+            r = await Api.UpdateMenuItemAsync(_editItemId.Value, new UpdateMenuItemRequest(
+                _itemForm.Name, _itemForm.Description, _itemForm.Price,
+                _itemForm.PreparationTimeMinutes, _itemForm.IsVegetarian,
+                _itemForm.IsVegan, _itemForm.IsGlutenFree, _itemForm.SpiceLevel));
+        _saving = false;
+        if (r.IsSuccess) { _showItemModal = false; await LoadMenu(); }
+        else _itemModalError = r.Error ?? "Save failed.";
+    }
+
+    private void ConfirmDeleteItem(MenuItemDto item)
+    {
+        _deleteMessage = $"Delete menu item '{item.Name}'?";
+        _deleteAction = async () =>
+        {
+            var r = await Api.DeleteMenuItemAsync(item.Id);
+            if (!r.IsSuccess) _error = r.Error ?? "Delete failed.";
+            else await LoadMenu();
+        };
+    }
+
+    private async Task UpdateStock(MenuItemDto item, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var stock))
+        {
+            var r = await Api.UpdateStockAsync(item.Id, stock);
+            if (!r.IsSuccess) _error = r.Error ?? "Failed to update stock.";
+            else await LoadMenu();
+        }
+    }
+
+    private async Task ToggleAvailability(MenuItemDto item, ChangeEventArgs e)
+    {
+        var available = (bool)(e.Value ?? false);
+        var r = await Api.SetAvailabilityAsync(item.Id, available);
+        if (!r.IsSuccess) _error = r.Error ?? "Failed to update availability.";
+        else await LoadMenu();
+    }
+
+    private async Task ExportExcel()
+    {
+        _success = string.Empty; _error = string.Empty;
+        var r = await Api.ExportMenuExcelAsync(_selectedBranchId);
+        if (r.IsSuccess) _success = "Export successful. File downloaded.";
+        else _error = r.Error ?? "Export failed.";
+    }
+
+    private async Task ImportExcel(InputFileChangeEventArgs e)
+    {
+        _success = string.Empty; _error = string.Empty;
+        var file = e.File;
+        using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+        var r = await Api.ImportMenuExcelAsync(_selectedBranchId, stream, file.Name);
+        if (r.IsSuccess) { _success = "Import successful."; await LoadMenu(); }
+        else _error = r.Error ?? "Import failed.";
+    }
+
+    private async Task ExecuteDelete()
+    {
+        if (_deleteAction is not null) await _deleteAction();
+        _deleteAction = null;
+        _deleteMessage = null;
+    }
+
+    private class ItemFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+        public Guid CategoryId { get; set; }
+        public int PreparationTimeMinutes { get; set; } = 15;
+        public int? StockCount { get; set; }
+        public bool IsVegetarian { get; set; }
+        public bool IsVegan { get; set; }
+        public bool IsGlutenFree { get; set; }
+        public int SpiceLevel { get; set; }
+    }
+}

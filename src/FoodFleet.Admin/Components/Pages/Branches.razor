@@ -1,0 +1,261 @@
+@page "/branches"
+@attribute [Authorize]
+@inject AdminApiClient Api
+
+<PageTitle>Branches – FoodFleet Admin</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Branches</h3>
+    <button class="btn btn-primary" @onclick="OpenCreate">+ New Branch</button>
+</div>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center mt-5"><div class="spinner-border text-primary"></div></div>
+}
+else if (!string.IsNullOrEmpty(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Name</th>
+                        <th>City</th>
+                        <th>Phone</th>
+                        <th>Status</th>
+                        <th>Hours</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var b in _branches)
+                    {
+                        <tr>
+                            <td>@b.Name</td>
+                            <td>@b.City</td>
+                            <td>@b.PhoneNumber</td>
+                            <td>
+                                <span class="badge @(b.IsActive ? "bg-success" : "bg-secondary")">
+                                    @(b.IsActive ? "Active" : "Inactive")
+                                </span>
+                            </td>
+                            <td>@b.OpeningTime – @b.ClosingTime</td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEdit(b)">Edit</button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(b)">Delete</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (_showModal)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.4)">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_editId == null ? "New Branch" : "Edit Branch")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(_modalError))
+                    {
+                        <div class="alert alert-danger">@_modalError</div>
+                    }
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Name *</label>
+                            <input class="form-control" @bind="_form.Name" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Phone Number</label>
+                            <input class="form-control" @bind="_form.PhoneNumber" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Address *</label>
+                            <input class="form-control" @bind="_form.Address" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">City *</label>
+                            <input class="form-control" @bind="_form.City" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Latitude</label>
+                            <input class="form-control" type="number" step="any" @bind="_form.Latitude" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Longitude</label>
+                            <input class="form-control" type="number" step="any" @bind="_form.Longitude" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Opening Time</label>
+                            <input class="form-control" @bind="_form.OpeningTime" placeholder="09:00" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Closing Time</label>
+                            <input class="form-control" @bind="_form.ClosingTime" placeholder="22:00" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Delivery Radius (km)</label>
+                            <input class="form-control" type="number" step="0.1" @bind="_form.DeliveryRadiusKm" />
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="chkActive" @bind="_form.IsActive" />
+                                <label class="form-check-label" for="chkActive">Active</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveBranch" disabled="@_saving">
+                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_deleteTarget is not null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.4)">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" @onclick="() => _deleteTarget = null"></button>
+                </div>
+                <div class="modal-body">
+                    Delete branch <strong>@_deleteTarget.Name</strong>? This cannot be undone.
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => _deleteTarget = null">Cancel</button>
+                    <button class="btn btn-danger" @onclick="DeleteBranch">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<BranchDto> _branches = new();
+    private bool _loading = true;
+    private string _error = string.Empty;
+    private bool _showModal;
+    private bool _saving;
+    private string _modalError = string.Empty;
+    private Guid? _editId;
+    private BranchFormModel _form = new();
+    private BranchDto? _deleteTarget;
+
+    protected override async Task OnInitializedAsync() => await LoadBranches();
+
+    private async Task LoadBranches()
+    {
+        _loading = true;
+        var r = await Api.GetBranchesAsync();
+        if (r.IsSuccess) _branches = r.Data ?? new();
+        else _error = r.Error ?? "Failed to load branches.";
+        _loading = false;
+    }
+
+    private void OpenCreate()
+    {
+        _editId = null;
+        _form = new();
+        _modalError = string.Empty;
+        _showModal = true;
+    }
+
+    private void OpenEdit(BranchDto b)
+    {
+        _editId = b.Id;
+        _form = new BranchFormModel
+        {
+            Name = b.Name, Address = b.Address, City = b.City,
+            PhoneNumber = b.PhoneNumber, Latitude = b.Latitude,
+            Longitude = b.Longitude, OpeningTime = b.OpeningTime,
+            ClosingTime = b.ClosingTime, DeliveryRadiusKm = b.DeliveryRadiusKm,
+            IsActive = b.IsActive
+        };
+        _modalError = string.Empty;
+        _showModal = true;
+    }
+
+    private void CloseModal() => _showModal = false;
+
+    private async Task SaveBranch()
+    {
+        if (string.IsNullOrWhiteSpace(_form.Name))
+        {
+            _modalError = "Name is required.";
+            return;
+        }
+        _saving = true;
+        _modalError = string.Empty;
+
+        ApiResult<BranchDto> r;
+        if (_editId is null)
+        {
+            r = await Api.CreateBranchAsync(new CreateBranchRequest(
+                _form.Name, _form.Address, _form.City, _form.PhoneNumber,
+                _form.Latitude, _form.Longitude, _form.OpeningTime,
+                _form.ClosingTime, _form.DeliveryRadiusKm));
+        }
+        else
+        {
+            r = await Api.UpdateBranchAsync(_editId.Value, new UpdateBranchRequest(
+                _form.Name, _form.Address, _form.City, _form.PhoneNumber,
+                _form.Latitude, _form.Longitude, _form.OpeningTime,
+                _form.ClosingTime, _form.DeliveryRadiusKm, _form.IsActive));
+        }
+
+        if (r.IsSuccess)
+        {
+            _showModal = false;
+            await LoadBranches();
+        }
+        else
+        {
+            _modalError = r.Error ?? "Save failed.";
+        }
+        _saving = false;
+    }
+
+    private void ConfirmDelete(BranchDto b) => _deleteTarget = b;
+
+    private async Task DeleteBranch()
+    {
+        if (_deleteTarget is null) return;
+        var r = await Api.DeleteBranchAsync(_deleteTarget.Id);
+        _deleteTarget = null;
+        if (r.IsSuccess) await LoadBranches();
+        else _error = r.Error ?? "Delete failed.";
+    }
+
+    private class BranchFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+        public string City { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public string OpeningTime { get; set; } = "09:00";
+        public string ClosingTime { get; set; } = "22:00";
+        public double DeliveryRadiusKm { get; set; } = 5.0;
+        public bool IsActive { get; set; } = true;
+    }
+}

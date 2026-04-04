@@ -1,0 +1,288 @@
+@page "/orders"
+@attribute [Authorize]
+@inject AdminApiClient Api
+
+<PageTitle>Orders – FoodFleet Admin</PageTitle>
+
+<h3 class="mb-3">Orders</h3>
+
+@* ── Filters ── *@
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small">Branch</label>
+                <select class="form-select" @bind="_filterBranchId">
+                    <option value="">All Branches</option>
+                    @foreach (var b in _branches)
+                    {
+                        <option value="@b.Id">@b.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Status</label>
+                <select class="form-select" @bind="_filterStatus">
+                    <option value="">All</option>
+                    @foreach (var s in _statuses)
+                    {
+                        <option>@s</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">From</label>
+                <input class="form-control" type="date" @bind="_filterFrom" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">To</label>
+                <input class="form-control" type="date" @bind="_filterTo" />
+            </div>
+            <div class="col-md-1">
+                <button class="btn btn-primary w-100" @onclick="LoadOrders">Filter</button>
+            </div>
+            <div class="col-md-1">
+                <button class="btn btn-outline-secondary w-100" @onclick="ClearFilters">Clear</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+@if (!string.IsNullOrEmpty(_success))
+{
+    <div class="alert alert-success">@_success</div>
+}
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center mt-4"><div class="spinner-border text-primary"></div></div>
+}
+else
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Order #</th>
+                        <th>Branch</th>
+                        <th>Customer</th>
+                        <th>Placed</th>
+                        <th>Status</th>
+                        <th class="text-end">Amount</th>
+                        <th>Delivery Partner</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_orders.Count == 0)
+                    {
+                        <tr><td colspan="8" class="text-center text-muted py-3">No orders found.</td></tr>
+                    }
+                    @foreach (var o in _orders)
+                    {
+                        <tr>
+                            <td>@o.OrderNumber</td>
+                            <td>@o.BranchName</td>
+                            <td>@o.CustomerName</td>
+                            <td>@o.PlacedAt.ToString("dd MMM, HH:mm")</td>
+                            <td><span class="badge @StatusBadge(o.Status)">@o.Status</span></td>
+                            <td class="text-end">₹@o.TotalAmount.ToString("N2")</td>
+                            <td>@(o.DeliveryPartnerName ?? "—")</td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => OpenOrderDetail(o)">
+                                    Manage
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@* ── Order Detail / Manage Modal ── *@
+@if (_selectedOrder is not null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.4)">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Order #@_selectedOrder.OrderNumber</h5>
+                    <button type="button" class="btn-close" @onclick="() => _selectedOrder = null"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(_modalError)) { <div class="alert alert-danger">@_modalError</div> }
+
+                    <div class="row mb-3">
+                        <div class="col-md-4"><strong>Customer:</strong> @_selectedOrder.CustomerName</div>
+                        <div class="col-md-4"><strong>Branch:</strong> @_selectedOrder.BranchName</div>
+                        <div class="col-md-4"><strong>Payment:</strong> @_selectedOrder.PaymentMethod</div>
+                    </div>
+                    <div class="mb-3"><strong>Delivery Address:</strong> @_selectedOrder.DeliveryAddress</div>
+
+                    @if (_selectedOrder.Items.Count > 0)
+                    {
+                        <table class="table table-sm mb-3">
+                            <thead><tr><th>Item</th><th class="text-end">Qty</th><th class="text-end">Price</th></tr></thead>
+                            <tbody>
+                                @foreach (var item in _selectedOrder.Items)
+                                {
+                                    <tr>
+                                        <td>@item.MenuItemName</td>
+                                        <td class="text-end">@item.Quantity</td>
+                                        <td class="text-end">₹@item.UnitPrice.ToString("N2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr class="fw-bold">
+                                    <td colspan="2">Total</td>
+                                    <td class="text-end">₹@_selectedOrder.TotalAmount.ToString("N2")</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    }
+
+                    <div class="row g-3">
+                        <div class="col-md-5">
+                            <label class="form-label">Update Status</label>
+                            <select class="form-select" @bind="_newStatus">
+                                @foreach (var s in _statuses)
+                                {
+                                    <option value="@s">@s</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">Assign Delivery Partner</label>
+                            <select class="form-select" @bind="_newPartnerId">
+                                <option value="">— None —</option>
+                                @foreach (var dp in _deliveryPartners)
+                                {
+                                    <option value="@dp.Id">@dp.Name (@(dp.IsAvailable ? "Available" : "Busy"))</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => _selectedOrder = null">Close</button>
+                    <button class="btn btn-warning" @onclick="UpdateStatus" disabled="@_saving">Update Status</button>
+                    <button class="btn btn-info text-white" @onclick="AssignPartner" disabled="@(_saving || string.IsNullOrEmpty(_newPartnerId))">
+                        Assign Partner
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<BranchDto> _branches = new();
+    private List<OrderDto> _orders = new();
+    private List<DeliveryPartnerDto> _deliveryPartners = new();
+    private bool _loading;
+    private string _error = string.Empty;
+    private string _success = string.Empty;
+
+    private string _filterBranchId = string.Empty;
+    private string _filterStatus = string.Empty;
+    private DateTime? _filterFrom;
+    private DateTime? _filterTo;
+
+    private OrderDto? _selectedOrder;
+    private string _newStatus = string.Empty;
+    private string _newPartnerId = string.Empty;
+    private bool _saving;
+    private string _modalError = string.Empty;
+
+    private static readonly string[] _statuses =
+    [
+        "Pending", "PendingPayment", "Confirmed", "Preparing", "ReadyForPickup",
+        "OutForDelivery", "Delivered", "Cancelled"
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var branchResult = await Api.GetBranchesAsync();
+        if (branchResult.IsSuccess) _branches = branchResult.Data ?? new();
+        await LoadOrders();
+    }
+
+    private async Task LoadOrders()
+    {
+        _loading = true;
+        _error = string.Empty;
+        Guid? branchId = Guid.TryParse(_filterBranchId, out var bid) ? bid : null;
+        var r = await Api.GetOrdersAsync(branchId, string.IsNullOrEmpty(_filterStatus) ? null : _filterStatus, _filterFrom, _filterTo);
+        if (r.IsSuccess) _orders = r.Data ?? new();
+        else _error = r.Error ?? "Failed to load orders.";
+        _loading = false;
+    }
+
+    private async Task OpenOrderDetail(OrderDto o)
+    {
+        _selectedOrder = o;
+        _newStatus = o.Status;
+        _newPartnerId = o.DeliveryPartnerId?.ToString() ?? string.Empty;
+        _modalError = string.Empty;
+
+        Guid? branchId = o.BranchId != Guid.Empty ? o.BranchId : null;
+        var dpResult = await Api.GetDeliveryPartnersAsync(branchId);
+        _deliveryPartners = dpResult.IsSuccess ? (dpResult.Data ?? new()) : new();
+    }
+
+    private async Task UpdateStatus()
+    {
+        if (_selectedOrder is null) return;
+        _saving = true; _modalError = string.Empty;
+        var r = await Api.UpdateOrderStatusAsync(_selectedOrder.Id, _newStatus);
+        if (r.IsSuccess)
+        {
+            _success = $"Order #{_selectedOrder.OrderNumber} status updated to {_newStatus}.";
+            _selectedOrder = null;
+            await LoadOrders();
+        }
+        else _modalError = r.Error ?? "Failed to update status.";
+        _saving = false;
+    }
+
+    private async Task AssignPartner()
+    {
+        if (_selectedOrder is null || !Guid.TryParse(_newPartnerId, out var partnerId)) return;
+        _saving = true; _modalError = string.Empty;
+        var r = await Api.AssignDeliveryPartnerAsync(_selectedOrder.Id, partnerId);
+        if (r.IsSuccess)
+        {
+            _success = "Delivery partner assigned successfully.";
+            _selectedOrder = null;
+            await LoadOrders();
+        }
+        else _modalError = r.Error ?? "Failed to assign partner.";
+        _saving = false;
+    }
+
+    private void ClearFilters()
+    {
+        _filterBranchId = string.Empty;
+        _filterStatus = string.Empty;
+        _filterFrom = null;
+        _filterTo = null;
+    }
+
+    private static string StatusBadge(string status) => status switch
+    {
+        "Delivered" => "bg-success",
+        "Cancelled" => "bg-danger",
+        "OutForDelivery" => "bg-info",
+        "Preparing" or "ReadyForPickup" => "bg-warning text-dark",
+        "Confirmed" => "bg-primary",
+        _ => "bg-secondary"
+    };
+}
