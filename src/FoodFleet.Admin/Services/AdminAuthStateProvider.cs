@@ -12,7 +12,16 @@ public class AdminAuthStateProvider(ILocalStorageService localStorage, AdminApiC
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
-        var token = await localStorage.GetItemAsStringAsync(TokenKey);
+        string? token;
+        try
+        {
+            token = await localStorage.GetItemAsStringAsync(TokenKey);
+        }
+        catch (InvalidOperationException)
+        {
+            // JS interop not available during SSR prerendering — return anonymous state
+            return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
+        }
         if (string.IsNullOrEmpty(token))
             return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
 
