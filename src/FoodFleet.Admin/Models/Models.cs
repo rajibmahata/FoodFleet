@@ -2,7 +2,7 @@ namespace FoodFleet.Admin.Models;
 
 // ── Auth ──────────────────────────────────────────────────────
 
-public record AdminLoginRequest(string Email, string Password);
+public record AdminLoginRequest(string Username, string Password);
 public record AuthResponse(string AccessToken, string RefreshToken, DateTime AccessTokenExpiry);
 
 // ── Branches ─────────────────────────────────────────────────
