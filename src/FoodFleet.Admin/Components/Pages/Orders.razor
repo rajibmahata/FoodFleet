@@ -4,180 +4,241 @@
 
 <PageTitle>Orders – FoodFleet Admin</PageTitle>
 
-<h3 class="mb-3">Orders</h3>
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-slate-800">Orders</h1>
+    <p class="text-sm text-slate-500 mt-0.5">Monitor and manage all customer orders</p>
+</div>
 
 @* ── Filters ── *@
-<div class="card border-0 shadow-sm mb-3">
-    <div class="card-body">
-        <div class="row g-2 align-items-end">
-            <div class="col-md-3">
-                <label class="form-label small">Branch</label>
-                <select class="form-select" @bind="_filterBranchId">
-                    <option value="">All Branches</option>
-                    @foreach (var b in _branches)
-                    {
-                        <option value="@b.Id">@b.Name</option>
-                    }
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small">Status</label>
-                <select class="form-select" @bind="_filterStatus">
-                    <option value="">All</option>
-                    @foreach (var s in _statuses)
-                    {
-                        <option>@s</option>
-                    }
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small">From</label>
-                <input class="form-control" type="date" @bind="_filterFrom" />
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small">To</label>
-                <input class="form-control" type="date" @bind="_filterTo" />
-            </div>
-            <div class="col-md-1">
-                <button class="btn btn-primary w-100" @onclick="LoadOrders">Filter</button>
-            </div>
-            <div class="col-md-1">
-                <button class="btn btn-outline-secondary w-100" @onclick="ClearFilters">Clear</button>
-            </div>
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+        <div class="lg:col-span-2">
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Branch</label>
+            <select class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                    @bind="_filterBranchId">
+                <option value="">All Branches</option>
+                @foreach (var b in _branches)
+                {
+                    <option value="@b.Id">@b.Name</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Status</label>
+            <select class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                    @bind="_filterStatus">
+                <option value="">All</option>
+                @foreach (var s in _statuses)
+                {
+                    <option>@s</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">From</label>
+            <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                   type="date" @bind="_filterFrom" />
+        </div>
+        <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">To</label>
+            <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                   type="date" @bind="_filterTo" />
+        </div>
+        <div class="flex gap-2">
+            <button @onclick="LoadOrders"
+                    class="flex-1 rounded-lg bg-brand hover:bg-brand-dark text-white px-3 py-2 text-sm font-semibold transition-colors">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
+            <button @onclick="ClearFilters"
+                    class="flex-1 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-2 text-sm font-medium transition-colors">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
         </div>
     </div>
 </div>
 
 @if (!string.IsNullOrEmpty(_error))
 {
-    <div class="alert alert-danger">@_error</div>
+    <div class="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+        <i class="fa-solid fa-circle-exclamation"></i> @_error
+    </div>
 }
 @if (!string.IsNullOrEmpty(_success))
 {
-    <div class="alert alert-success">@_success</div>
+    <div class="mb-4 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700 flex items-center gap-2">
+        <i class="fa-solid fa-circle-check"></i> @_success
+    </div>
 }
 
 @if (_loading)
 {
-    <div class="d-flex justify-content-center mt-4"><div class="spinner-border text-primary"></div></div>
+    <div class="flex justify-center py-16">
+        <div class="flex flex-col items-center gap-3 text-slate-400">
+            <i class="fa-solid fa-circle-notch fa-spin fa-2x"></i>
+            <span class="text-sm">Loading orders...</span>
+        </div>
+    </div>
 }
 else
 {
-    <div class="card border-0 shadow-sm">
-        <div class="card-body p-0">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 border-b border-slate-200">
+                <tr>
+                    <th class="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Order #</th>
+                    <th class="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Branch</th>
+                    <th class="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Customer</th>
+                    <th class="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Placed</th>
+                    <th class="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
+                    <th class="px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Amount</th>
+                    <th class="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Delivery Partner</th>
+                    <th class="px-5 py-3.5"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (_orders.Count == 0)
+                {
                     <tr>
-                        <th>Order #</th>
-                        <th>Branch</th>
-                        <th>Customer</th>
-                        <th>Placed</th>
-                        <th>Status</th>
-                        <th class="text-end">Amount</th>
-                        <th>Delivery Partner</th>
-                        <th></th>
+                        <td colspan="8" class="px-5 py-12 text-center text-slate-400">
+                            <i class="fa-solid fa-receipt text-3xl mb-2 block"></i>
+                            No orders found for the current filters.
+                        </td>
                     </tr>
-                </thead>
-                <tbody>
-                    @if (_orders.Count == 0)
-                    {
-                        <tr><td colspan="8" class="text-center text-muted py-3">No orders found.</td></tr>
-                    }
-                    @foreach (var o in _orders)
-                    {
-                        <tr>
-                            <td>@o.OrderNumber</td>
-                            <td>@o.BranchName</td>
-                            <td>@o.CustomerName</td>
-                            <td>@o.PlacedAt.ToString("dd MMM, HH:mm")</td>
-                            <td><span class="badge @StatusBadge(o.Status)">@o.Status</span></td>
-                            <td class="text-end">₹@o.TotalAmount.ToString("N2")</td>
-                            <td>@(o.DeliveryPartnerName ?? "—")</td>
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => OpenOrderDetail(o)">
-                                    Manage
-                                </button>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+                }
+                @foreach (var o in _orders)
+                {
+                    <tr class="border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
+                        <td class="px-5 py-3.5 font-semibold text-slate-800">#@o.OrderNumber</td>
+                        <td class="px-5 py-3.5 text-slate-600">@o.BranchName</td>
+                        <td class="px-5 py-3.5 text-slate-700">@o.CustomerName</td>
+                        <td class="px-5 py-3.5 text-slate-500 text-xs">@o.PlacedAt.ToString("dd MMM, HH:mm")</td>
+                        <td class="px-5 py-3.5">
+                            <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold @StatusBadge(o.Status)">
+                                @o.Status
+                            </span>
+                        </td>
+                        <td class="px-5 py-3.5 text-right font-semibold text-slate-800">₹@o.TotalAmount.ToString("N2")</td>
+                        <td class="px-5 py-3.5 text-slate-500">@(o.DeliveryPartnerName ?? "—")</td>
+                        <td class="px-5 py-3.5 text-right">
+                            <button @onclick="() => OpenOrderDetail(o)"
+                                    class="rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 px-3 py-1.5 text-xs font-medium transition-colors">
+                                Manage
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
 }
 
 @* ── Order Detail / Manage Modal ── *@
 @if (_selectedOrder is not null)
 {
-    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.4)">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Order #@_selectedOrder.OrderNumber</h5>
-                    <button type="button" class="btn-close" @onclick="() => _selectedOrder = null"></button>
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-800">Order #@_selectedOrder.OrderNumber</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">@_selectedOrder.PlacedAt.ToString("dddd, dd MMMM yyyy — HH:mm")</p>
                 </div>
-                <div class="modal-body">
-                    @if (!string.IsNullOrEmpty(_modalError)) { <div class="alert alert-danger">@_modalError</div> }
-
-                    <div class="row mb-3">
-                        <div class="col-md-4"><strong>Customer:</strong> @_selectedOrder.CustomerName</div>
-                        <div class="col-md-4"><strong>Branch:</strong> @_selectedOrder.BranchName</div>
-                        <div class="col-md-4"><strong>Payment:</strong> @_selectedOrder.PaymentMethod</div>
+                <button @onclick="() => _selectedOrder = null"
+                        class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="px-6 py-5 space-y-5">
+                @if (!string.IsNullOrEmpty(_modalError))
+                {
+                    <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">@_modalError</div>
+                }
+                <div class="grid grid-cols-3 gap-4 text-sm">
+                    <div class="rounded-xl bg-slate-50 px-4 py-3">
+                        <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Customer</p>
+                        <p class="font-medium text-slate-800">@_selectedOrder.CustomerName</p>
                     </div>
-                    <div class="mb-3"><strong>Delivery Address:</strong> @_selectedOrder.DeliveryAddress</div>
-
-                    @if (_selectedOrder.Items.Count > 0)
-                    {
-                        <table class="table table-sm mb-3">
-                            <thead><tr><th>Item</th><th class="text-end">Qty</th><th class="text-end">Price</th></tr></thead>
+                    <div class="rounded-xl bg-slate-50 px-4 py-3">
+                        <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Branch</p>
+                        <p class="font-medium text-slate-800">@_selectedOrder.BranchName</p>
+                    </div>
+                    <div class="rounded-xl bg-slate-50 px-4 py-3">
+                        <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Payment</p>
+                        <p class="font-medium text-slate-800">@_selectedOrder.PaymentMethod</p>
+                    </div>
+                </div>
+                <div class="rounded-xl bg-slate-50 px-4 py-3 text-sm">
+                    <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Delivery Address</p>
+                    <p class="text-slate-700">@_selectedOrder.DeliveryAddress</p>
+                </div>
+                @if (_selectedOrder.Items.Count > 0)
+                {
+                    <div class="rounded-xl border border-slate-100 overflow-hidden">
+                        <table class="w-full text-sm">
+                            <thead class="bg-slate-50 border-b border-slate-100">
+                                <tr>
+                                    <th class="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">Item</th>
+                                    <th class="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Qty</th>
+                                    <th class="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">Price</th>
+                                </tr>
+                            </thead>
                             <tbody>
                                 @foreach (var item in _selectedOrder.Items)
                                 {
-                                    <tr>
-                                        <td>@item.MenuItemName</td>
-                                        <td class="text-end">@item.Quantity</td>
-                                        <td class="text-end">₹@item.UnitPrice.ToString("N2")</td>
+                                    <tr class="border-t border-slate-100">
+                                        <td class="px-4 py-2.5 text-slate-700">@item.MenuItemName</td>
+                                        <td class="px-4 py-2.5 text-right text-slate-600">@item.Quantity</td>
+                                        <td class="px-4 py-2.5 text-right text-slate-600">₹@item.UnitPrice.ToString("N2")</td>
                                     </tr>
                                 }
                             </tbody>
-                            <tfoot>
-                                <tr class="fw-bold">
-                                    <td colspan="2">Total</td>
-                                    <td class="text-end">₹@_selectedOrder.TotalAmount.ToString("N2")</td>
+                            <tfoot class="border-t-2 border-slate-200 bg-slate-50">
+                                <tr>
+                                    <td colspan="2" class="px-4 py-2.5 text-sm font-bold text-slate-800">Total</td>
+                                    <td class="px-4 py-2.5 text-right font-bold text-slate-800">₹@_selectedOrder.TotalAmount.ToString("N2")</td>
                                 </tr>
                             </tfoot>
                         </table>
-                    }
-
-                    <div class="row g-3">
-                        <div class="col-md-5">
-                            <label class="form-label">Update Status</label>
-                            <select class="form-select" @bind="_newStatus">
-                                @foreach (var s in _statuses)
-                                {
-                                    <option value="@s">@s</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="col-md-5">
-                            <label class="form-label">Assign Delivery Partner</label>
-                            <select class="form-select" @bind="_newPartnerId">
-                                <option value="">— None —</option>
-                                @foreach (var dp in _deliveryPartners)
-                                {
-                                    <option value="@dp.Id">@dp.Name (@(dp.IsAvailable ? "Available" : "Busy"))</option>
-                                }
-                            </select>
-                        </div>
+                    </div>
+                }
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Update Status</label>
+                        <select class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                                @bind="_newStatus">
+                            @foreach (var s in _statuses)
+                            {
+                                <option value="@s">@s</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Assign Delivery Partner</label>
+                        <select class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                                @bind="_newPartnerId">
+                            <option value="">— None —</option>
+                            @foreach (var dp in _deliveryPartners)
+                            {
+                                <option value="@dp.Id">@dp.Name (@(dp.IsAvailable ? "Available" : "Busy"))</option>
+                            }
+                        </select>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="() => _selectedOrder = null">Close</button>
-                    <button class="btn btn-warning" @onclick="UpdateStatus" disabled="@_saving">Update Status</button>
-                    <button class="btn btn-info text-white" @onclick="AssignPartner" disabled="@(_saving || string.IsNullOrEmpty(_newPartnerId))">
-                        Assign Partner
-                    </button>
-                </div>
+            </div>
+            <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
+                <button @onclick="() => _selectedOrder = null"
+                        class="rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 text-sm font-semibold transition-colors">
+                    Close
+                </button>
+                <button @onclick="UpdateStatus" disabled="@_saving"
+                        class="flex items-center gap-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-60">
+                    @if (_saving) { <i class="fa-solid fa-circle-notch fa-spin"></i> }
+                    Update Status
+                </button>
+                <button @onclick="AssignPartner" disabled="@(_saving || string.IsNullOrEmpty(_newPartnerId))"
+                        class="flex items-center gap-2 rounded-lg bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-60">
+                    @if (_saving) { <i class="fa-solid fa-circle-notch fa-spin"></i> }
+                    Assign Partner
+                </button>
             </div>
         </div>
     </div>
@@ -278,11 +339,11 @@ else
 
     private static string StatusBadge(string status) => status switch
     {
-        "Delivered" => "bg-success",
-        "Cancelled" => "bg-danger",
-        "OutForDelivery" => "bg-info",
-        "Preparing" or "ReadyForPickup" => "bg-warning text-dark",
-        "Confirmed" => "bg-primary",
-        _ => "bg-secondary"
+        "Delivered" => "bg-emerald-100 text-emerald-700",
+        "Cancelled" => "bg-red-100 text-red-700",
+        "OutForDelivery" => "bg-sky-100 text-sky-700",
+        "Preparing" or "ReadyForPickup" => "bg-amber-100 text-amber-700",
+        "Confirmed" => "bg-blue-100 text-blue-700",
+        _ => "bg-slate-100 text-slate-600"
     };
 }

@@ -4,23 +4,28 @@
 
 <PageTitle>Menu – FoodFleet Admin</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="mb-0">Menu Management</h3>
-    <div class="d-flex gap-2">
-        <button class="btn btn-outline-success" @onclick="ExportExcel" disabled="@(_selectedBranchId == Guid.Empty)">
-            Export Excel
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-800">Menu Management</h1>
+        <p class="text-sm text-slate-500 mt-0.5">Manage categories and items per branch</p>
+    </div>
+    <div class="flex items-center gap-3">
+        <button class="flex items-center gap-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 text-sm font-medium transition-colors disabled:opacity-40"
+                @onclick="ExportExcel" disabled="@(_selectedBranchId == Guid.Empty)">
+            <i class="fa-solid fa-file-arrow-down"></i> Export Excel
         </button>
-        <label class="btn btn-outline-primary mb-0" style="cursor:pointer">
-            Import Excel
-            <InputFile OnChange="ImportExcel" accept=".xlsx" style="display:none" />
+        <label class="flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-dark text-white px-4 py-2 text-sm font-semibold transition-colors cursor-pointer">
+            <i class="fa-solid fa-file-arrow-up"></i> Import Excel
+            <InputFile OnChange="ImportExcel" accept=".xlsx" class="hidden" />
         </label>
     </div>
 </div>
 
 @if (_branches.Count > 0)
 {
-    <div class="mb-3" style="max-width:300px">
-        <select class="form-select" @onchange="OnBranchChanged">
+    <div class="mb-6 max-w-xs">
+        <select class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                @onchange="OnBranchChanged">
             <option value="">— Select Branch —</option>
             @foreach (var b in _branches)
             {
@@ -32,70 +37,112 @@
 
 @if (!string.IsNullOrEmpty(_error))
 {
-    <div class="alert alert-danger">@_error</div>
+    <div class="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+        <i class="fa-solid fa-circle-exclamation"></i> @_error
+    </div>
 }
 @if (!string.IsNullOrEmpty(_success))
 {
-    <div class="alert alert-success">@_success</div>
+    <div class="mb-4 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700 flex items-center gap-2">
+        <i class="fa-solid fa-circle-check"></i> @_success
+    </div>
 }
 
 @if (_selectedBranchId != Guid.Empty)
 {
-    <div class="d-flex justify-content-between align-items-center mb-2">
-        <h5 class="mb-0">Categories</h5>
-        <button class="btn btn-sm btn-primary" @onclick="OpenCreateCategory">+ Category</button>
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-slate-700">Categories</h2>
+        <button class="flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-dark text-white px-4 py-2 text-sm font-semibold transition-colors"
+                @onclick="OpenCreateCategory">
+            <i class="fa-solid fa-plus"></i> Category
+        </button>
     </div>
 
     @if (_loadingMenu)
     {
-        <div class="spinner-border text-primary"></div>
+        <div class="flex justify-center py-12">
+            <div class="flex flex-col items-center gap-3 text-slate-400">
+                <i class="fa-solid fa-circle-notch fa-spin fa-2x"></i>
+                <span class="text-sm">Loading menu...</span>
+            </div>
+        </div>
     }
     else
     {
         @foreach (var cat in _categories)
         {
-            <div class="card mb-3 border-0 shadow-sm">
-                <div class="card-header d-flex justify-content-between align-items-center bg-light">
-                    <strong>@cat.Name</strong>
-                    <div>
-                        <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditCategory(cat)">Edit</button>
-                        <button class="btn btn-sm btn-outline-danger me-2" @onclick="() => ConfirmDeleteCategory(cat)">Delete</button>
-                        <button class="btn btn-sm btn-success" @onclick="() => OpenCreateItem(cat)">+ Item</button>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 mb-4 overflow-hidden">
+                <div class="flex items-center justify-between px-5 py-3 bg-slate-50 border-b border-slate-100">
+                    <div class="flex items-center gap-3">
+                        <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-brand/10 text-brand">
+                            <i class="fa-solid fa-layer-group text-sm"></i>
+                        </span>
+                        <span class="font-semibold text-slate-800">@cat.Name</span>
+                        <span class="text-xs text-slate-500 bg-slate-200 rounded-full px-2 py-0.5">
+                            @(_items.ContainsKey(cat.Id) ? _items[cat.Id].Count : 0) items
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button class="text-xs rounded-lg border border-slate-300 hover:bg-white px-3 py-1.5 text-slate-600 font-medium transition-colors"
+                                @onclick="() => OpenEditCategory(cat)">
+                            <i class="fa-solid fa-pen-to-square mr-1"></i>Edit
+                        </button>
+                        <button class="text-xs rounded-lg border border-red-200 hover:bg-red-50 text-red-600 px-3 py-1.5 font-medium transition-colors"
+                                @onclick="() => ConfirmDeleteCategory(cat)">
+                            <i class="fa-solid fa-trash mr-1"></i>Delete
+                        </button>
+                        <button class="text-xs rounded-lg bg-brand hover:bg-brand-dark text-white px-3 py-1.5 font-semibold transition-colors"
+                                @onclick="() => OpenCreateItem(cat)">
+                            <i class="fa-solid fa-plus mr-1"></i>Add Item
+                        </button>
                     </div>
                 </div>
-                <div class="card-body p-0">
+                <div>
                     @if (_items.ContainsKey(cat.Id) && _items[cat.Id].Count > 0)
                     {
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light">
+                        <table class="w-full text-sm">
+                            <thead class="bg-slate-50/60 border-b border-slate-100">
                                 <tr>
-                                    <th>Name</th>
-                                    <th>Price</th>
-                                    <th>Stock</th>
-                                    <th>Available</th>
-                                    <th></th>
+                                    <th class="px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Name</th>
+                                    <th class="px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Price</th>
+                                    <th class="px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Stock</th>
+                                    <th class="px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Available</th>
+                                    <th class="px-5 py-2.5"></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach (var item in _items[cat.Id])
                                 {
-                                    <tr>
-                                        <td>@item.Name</td>
-                                        <td>₹@item.Price.ToString("N2")</td>
-                                        <td>
-                                            <input type="number" class="form-control form-control-sm" style="width:80px"
+                                    <tr class="border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                        <td class="px-5 py-3 font-medium text-slate-800">@item.Name</td>
+                                        <td class="px-5 py-3 text-slate-600 font-semibold">₹@item.Price.ToString("N2")</td>
+                                        <td class="px-5 py-3">
+                                            <input type="number"
+                                                   class="w-20 rounded-lg border border-slate-300 px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
                                                    value="@item.StockCount"
                                                    @onchange="e => UpdateStock(item, e)" />
                                         </td>
-                                        <td>
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" checked="@item.IsAvailable"
+                                        <td class="px-5 py-3">
+                                            <label class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" class="sr-only peer" checked="@item.IsAvailable"
                                                        @onchange="e => ToggleAvailability(item, e)" />
-                                            </div>
+                                                <div class="w-10 h-5 bg-slate-200 peer-checked:bg-brand rounded-full transition-colors
+                                                            after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-4 after:h-4
+                                                            after:bg-white after:rounded-full after:transition-transform
+                                                            peer-checked:after:translate-x-5"></div>
+                                            </label>
                                         </td>
-                                        <td class="text-end">
-                                            <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditItem(item)">Edit</button>
-                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDeleteItem(item)">Delete</button>
+                                        <td class="px-5 py-3 text-right">
+                                            <div class="flex items-center justify-end gap-2">
+                                                <button class="text-xs rounded-lg border border-slate-300 hover:bg-slate-50 px-3 py-1.5 text-slate-600 font-medium transition-colors"
+                                                        @onclick="() => OpenEditItem(item)">
+                                                    Edit
+                                                </button>
+                                                <button class="text-xs rounded-lg border border-red-200 hover:bg-red-50 text-red-600 px-3 py-1.5 font-medium transition-colors"
+                                                        @onclick="() => ConfirmDeleteItem(item)">
+                                                    Delete
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 }
@@ -104,7 +151,10 @@
                     }
                     else
                     {
-                        <p class="text-muted text-center py-2">No items in this category.</p>
+                        <div class="px-5 py-8 text-center text-sm text-slate-400">
+                            <i class="fa-solid fa-bowl-food mb-2 text-xl block"></i>
+                            No items in this category yet.
+                        </div>
                     }
                 </div>
             </div>
@@ -112,38 +162,59 @@
 
         @if (_categories.Count == 0)
         {
-            <p class="text-muted">No categories yet. Create one above.</p>
+            <div class="rounded-2xl bg-white border border-slate-100 shadow-sm py-16 text-center text-slate-400">
+                <i class="fa-solid fa-layer-group text-4xl mb-3 block"></i>
+                <p class="text-sm">No categories yet. Create one to start building the menu.</p>
+            </div>
         }
     }
+}
+else
+{
+    <div class="rounded-2xl bg-white border border-slate-100 shadow-sm py-16 text-center text-slate-400">
+        <i class="fa-solid fa-store text-4xl mb-3 block"></i>
+        <p class="text-sm">Select a branch to manage its menu.</p>
+    </div>
 }
 
 @* ─── Category Modal ─── *@
 @if (_showCatModal)
 {
-    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.4)">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@(_editCatId == null ? "New Category" : "Edit Category")</h5>
-                    <button type="button" class="btn-close" @onclick="() => _showCatModal = false"></button>
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                <h2 class="text-lg font-semibold text-slate-800">@(_editCatId == null ? "New Category" : "Edit Category")</h2>
+                <button @onclick="() => _showCatModal = false"
+                        class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="px-6 py-5 space-y-4">
+                @if (!string.IsNullOrEmpty(_catModalError))
+                {
+                    <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">@_catModalError</div>
+                }
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Name *</label>
+                    <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                           @bind="_catName" placeholder="e.g. Starters" />
                 </div>
-                <div class="modal-body">
-                    @if (!string.IsNullOrEmpty(_catModalError)) { <div class="alert alert-danger">@_catModalError</div> }
-                    <div class="mb-3">
-                        <label class="form-label">Name *</label>
-                        <input class="form-control" @bind="_catName" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Sort Order</label>
-                        <input class="form-control" type="number" @bind="_catSortOrder" />
-                    </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Sort Order</label>
+                    <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                           type="number" @bind="_catSortOrder" />
                 </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="() => _showCatModal = false">Cancel</button>
-                    <button class="btn btn-primary" @onclick="SaveCategory" disabled="@_saving">
-                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> } Save
-                    </button>
-                </div>
+            </div>
+            <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
+                <button @onclick="() => _showCatModal = false"
+                        class="rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 text-sm font-semibold transition-colors">
+                    Cancel
+                </button>
+                <button @onclick="SaveCategory" disabled="@_saving"
+                        class="flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-dark text-white px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-60">
+                    @if (_saving) { <i class="fa-solid fa-circle-notch fa-spin"></i> }
+                    Save
+                </button>
             </div>
         </div>
     </div>
@@ -152,71 +223,91 @@
 @* ─── Item Modal ─── *@
 @if (_showItemModal)
 {
-    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.4)">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@(_editItemId == null ? "New Menu Item" : "Edit Menu Item")</h5>
-                    <button type="button" class="btn-close" @onclick="() => _showItemModal = false"></button>
-                </div>
-                <div class="modal-body">
-                    @if (!string.IsNullOrEmpty(_itemModalError)) { <div class="alert alert-danger">@_itemModalError</div> }
-                    <div class="row g-3">
-                        <div class="col-md-8">
-                            <label class="form-label">Name *</label>
-                            <input class="form-control" @bind="_itemForm.Name" />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Price *</label>
-                            <input class="form-control" type="number" step="0.01" @bind="_itemForm.Price" />
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Description</label>
-                            <textarea class="form-control" rows="2" @bind="_itemForm.Description"></textarea>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Category</label>
-                            <select class="form-select" @bind="_itemForm.CategoryId">
-                                @foreach (var c in _categories)
-                                {
-                                    <option value="@c.Id">@c.Name</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Prep Time (min)</label>
-                            <input class="form-control" type="number" @bind="_itemForm.PreparationTimeMinutes" />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Stock Count</label>
-                            <input class="form-control" type="number" @bind="_itemForm.StockCount" />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Spice Level (0-5)</label>
-                            <input class="form-control" type="number" min="0" max="5" @bind="_itemForm.SpiceLevel" />
-                        </div>
-                        <div class="col-md-8 d-flex gap-3 align-items-center">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="chkVeg" @bind="_itemForm.IsVegetarian" />
-                                <label class="form-check-label" for="chkVeg">Vegetarian</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="chkVegan" @bind="_itemForm.IsVegan" />
-                                <label class="form-check-label" for="chkVegan">Vegan</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="chkGF" @bind="_itemForm.IsGlutenFree" />
-                                <label class="form-check-label" for="chkGF">Gluten-Free</label>
-                            </div>
-                        </div>
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+                <h2 class="text-lg font-semibold text-slate-800">@(_editItemId == null ? "New Menu Item" : "Edit Menu Item")</h2>
+                <button @onclick="() => _showItemModal = false"
+                        class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="px-6 py-5 space-y-4">
+                @if (!string.IsNullOrEmpty(_itemModalError))
+                {
+                    <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">@_itemModalError</div>
+                }
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Name *</label>
+                        <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                               @bind="_itemForm.Name" placeholder="e.g. Butter Chicken" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Price (₹) *</label>
+                        <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                               type="number" step="0.01" @bind="_itemForm.Price" />
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="() => _showItemModal = false">Cancel</button>
-                    <button class="btn btn-primary" @onclick="SaveItem" disabled="@_saving">
-                        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> } Save
-                    </button>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                    <textarea class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand resize-none"
+                              rows="2" @bind="_itemForm.Description"></textarea>
                 </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Category</label>
+                        <select class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                                @bind="_itemForm.CategoryId">
+                            @foreach (var c in _categories)
+                            {
+                                <option value="@c.Id">@c.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Prep Time (min)</label>
+                        <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                               type="number" @bind="_itemForm.PreparationTimeMinutes" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Stock Count</label>
+                        <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                               type="number" @bind="_itemForm.StockCount" />
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Spice Level (0–5)</label>
+                        <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                               type="number" min="0" max="5" @bind="_itemForm.SpiceLevel" />
+                    </div>
+                    <div class="flex items-end gap-5 pb-1">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" class="w-4 h-4 rounded border-slate-300 accent-brand" id="chkVeg" @bind="_itemForm.IsVegetarian" />
+                            <span class="text-sm text-slate-700">Vegetarian</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" class="w-4 h-4 rounded border-slate-300 accent-brand" id="chkVegan" @bind="_itemForm.IsVegan" />
+                            <span class="text-sm text-slate-700">Vegan</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" class="w-4 h-4 rounded border-slate-300 accent-brand" id="chkGF" @bind="_itemForm.IsGlutenFree" />
+                            <span class="text-sm text-slate-700">GF</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
+                <button @onclick="() => _showItemModal = false"
+                        class="rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 text-sm font-semibold transition-colors">
+                    Cancel
+                </button>
+                <button @onclick="SaveItem" disabled="@_saving"
+                        class="flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-dark text-white px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-60">
+                    @if (_saving) { <i class="fa-solid fa-circle-notch fa-spin"></i> }
+                    Save Item
+                </button>
             </div>
         </div>
     </div>
@@ -225,18 +316,27 @@
 @* ─── Delete Confirm ─── *@
 @if (_deleteMessage is not null)
 {
-    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.4)">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Confirm Delete</h5>
-                    <button type="button" class="btn-close" @onclick="() => _deleteAction = null"></button>
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4">
+            <div class="flex items-center gap-4 px-6 py-5 border-b border-slate-100">
+                <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-500 shrink-0">
+                    <i class="fa-solid fa-trash"></i>
                 </div>
-                <div class="modal-body">@_deleteMessage</div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="() => _deleteAction = null">Cancel</button>
-                    <button class="btn btn-danger" @onclick="ExecuteDelete">Delete</button>
+                <div>
+                    <h2 class="text-base font-semibold text-slate-800">Confirm Delete</h2>
+                    <p class="text-sm text-slate-500 mt-0.5">This action cannot be undone.</p>
                 </div>
+            </div>
+            <div class="px-6 py-4 text-sm text-slate-600">@_deleteMessage</div>
+            <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
+                <button @onclick="() => _deleteAction = null"
+                        class="rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 text-sm font-semibold transition-colors">
+                    Cancel
+                </button>
+                <button @onclick="ExecuteDelete"
+                        class="rounded-lg bg-red-500 hover:bg-red-600 text-white px-4 py-2 text-sm font-semibold transition-colors">
+                    Delete
+                </button>
             </div>
         </div>
     </div>

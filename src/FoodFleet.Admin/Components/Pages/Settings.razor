@@ -4,64 +4,89 @@
 
 <PageTitle>Settings – FoodFleet Admin</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="mb-0">Settings</h3>
-    <button class="btn btn-primary" @onclick="SaveAll" disabled="@_saving">
-        @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
-        Save All
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-800">Settings</h1>
+        <p class="text-sm text-slate-500 mt-0.5">Configure platform-wide preferences</p>
+    </div>
+    <button @onclick="SaveAll" disabled="@_saving"
+            class="flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-dark text-white px-5 py-2.5 text-sm font-semibold transition-colors disabled:opacity-60">
+        @if (_saving) { <i class="fa-solid fa-circle-notch fa-spin"></i> }
+        <i class="fa-solid fa-floppy-disk"></i> Save All
     </button>
 </div>
 
 @if (!string.IsNullOrEmpty(_error))
 {
-    <div class="alert alert-danger">@_error</div>
+    <div class="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+        <i class="fa-solid fa-circle-exclamation"></i> @_error
+    </div>
 }
 @if (!string.IsNullOrEmpty(_success))
 {
-    <div class="alert alert-success">@_success</div>
+    <div class="mb-4 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700 flex items-center gap-2">
+        <i class="fa-solid fa-circle-check"></i> @_success
+    </div>
 }
 
 @if (_loading)
 {
-    <div class="d-flex justify-content-center mt-4"><div class="spinner-border text-primary"></div></div>
+    <div class="flex justify-center py-16">
+        <div class="flex flex-col items-center gap-3 text-slate-400">
+            <i class="fa-solid fa-circle-notch fa-spin fa-2x"></i>
+            <span class="text-sm">Loading settings...</span>
+        </div>
+    </div>
 }
 else if (_settings.Count == 0)
 {
-    <p class="text-muted text-center mt-3">No settings configured yet.</p>
+    <div class="rounded-2xl bg-white border border-slate-100 shadow-sm py-16 text-center text-slate-400">
+        <i class="fa-solid fa-gear text-4xl mb-3 block"></i>
+        <p class="text-sm">No settings configured yet.</p>
+    </div>
 }
 else
 {
-    <div class="card border-0 shadow-sm">
-        <div class="card-body">
-            @foreach (var group in _grouped.Keys)
-            {
-                <h5 class="text-muted text-uppercase small fw-bold mt-3 mb-2">@group</h5>
-                @foreach (var s in _grouped[group])
-                {
-                    <div class="row mb-3 align-items-center">
-                        <div class="col-md-4">
-                            <label class="form-label mb-0 fw-semibold" title="@s.Key">@FormatKey(s.Key)</label>
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 divide-y divide-slate-100">
+        @foreach (var group in _grouped.Keys)
+        {
+            <div class="px-6 py-5">
+                <div class="flex items-center gap-3 mb-5">
+                    <span class="text-xs font-bold uppercase tracking-widest text-slate-400">@group</span>
+                    <div class="h-px flex-1 bg-slate-100"></div>
+                </div>
+                <div class="space-y-5">
+                    @foreach (var s in _grouped[group])
+                    {
+                        <div class="flex items-center gap-6">
+                            <div class="w-72 shrink-0">
+                                <label class="text-sm font-semibold text-slate-700" title="@s.Key">@FormatKey(s.Key)</label>
+                                <p class="text-xs text-slate-400 mt-0.5 font-mono">@s.Key</p>
+                            </div>
+                            <div class="flex-1 max-w-sm">
+                                @if (IsBoolKey(s.Key))
+                                {
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" class="sr-only peer" checked="@(s.Value == "true")"
+                                               @onchange="e => OnBoolToggle(s, e)" />
+                                        <div class="w-11 h-6 bg-slate-200 peer-checked:bg-brand rounded-full transition-colors
+                                                    after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5
+                                                    after:bg-white after:rounded-full after:transition-transform
+                                                    peer-checked:after:translate-x-5"></div>
+                                    </label>
+                                }
+                                else
+                                {
+                                    <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                                           value="@s.Value"
+                                           @onchange="e => s.Value = e.Value?.ToString() ?? string.Empty" />
+                                }
+                            </div>
                         </div>
-                        <div class="col-md-5">
-                            @if (IsBoolKey(s.Key))
-                            {
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox"
-                                           checked="@(s.Value == "true")"
-                                           @onchange="e => OnBoolToggle(s, e)" />
-                                </div>
-                            }
-                            else
-                            {
-                                <input class="form-control" value="@s.Value"
-                                       @onchange="e => s.Value = e.Value?.ToString() ?? string.Empty" />
-                            }
-                        </div>
-                    </div>
-                }
-                <hr />
-            }
-        </div>
+                    }
+                </div>
+            </div>
+        }
     </div>
 }
 

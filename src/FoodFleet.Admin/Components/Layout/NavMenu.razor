@@ -1,59 +1,33 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">FoodFleet Admin</a>
-    </div>
-</div>
+﻿<NavLink href="dashboard" Match="NavLinkMatch.All" class="nav-item group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-all text-sm font-medium" ActiveClass="!bg-brand !text-white shadow-md">
+    <i class="fa-solid fa-gauge-high w-4 text-center text-base"></i>
+    <span>Dashboard</span>
+</NavLink>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+<NavLink href="branches" class="nav-item group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-all text-sm font-medium" ActiveClass="!bg-brand !text-white shadow-md">
+    <i class="fa-solid fa-store w-4 text-center text-base"></i>
+    <span>Branches</span>
+</NavLink>
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="flex-column">
-        <AuthorizeView>
-            <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="dashboard" Match="NavLinkMatch.All">
-                        <span class="bi bi-speedometer2" aria-hidden="true"></span> Dashboard
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="branches">
-                        <span class="bi bi-building" aria-hidden="true"></span> Branches
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="menu">
-                        <span class="bi bi-menu-button-wide" aria-hidden="true"></span> Menu
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="orders">
-                        <span class="bi bi-receipt" aria-hidden="true"></span> Orders
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="delivery-partners">
-                        <span class="bi bi-bicycle" aria-hidden="true"></span> Delivery Partners
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="settings">
-                        <span class="bi bi-gear" aria-hidden="true"></span> Settings
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3 mt-3">
-                    <NavLink class="nav-link text-danger" href="logout">
-                        <span class="bi bi-box-arrow-right" aria-hidden="true"></span> Logout
-                    </NavLink>
-                </div>
-            </Authorized>
-            <NotAuthorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="login">
-                        <span class="bi bi-lock" aria-hidden="true"></span> Login
-                    </NavLink>
-                </div>
-            </NotAuthorized>
-        </AuthorizeView>
-    </nav>
+<NavLink href="menu" class="nav-item group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-all text-sm font-medium" ActiveClass="!bg-brand !text-white shadow-md">
+    <i class="fa-solid fa-bowl-food w-4 text-center text-base"></i>
+    <span>Menu</span>
+</NavLink>
+
+<NavLink href="orders" class="nav-item group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-all text-sm font-medium" ActiveClass="!bg-brand !text-white shadow-md">
+    <i class="fa-solid fa-receipt w-4 text-center text-base"></i>
+    <span>Orders</span>
+</NavLink>
+
+<NavLink href="delivery-partners" class="nav-item group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-all text-sm font-medium" ActiveClass="!bg-brand !text-white shadow-md">
+    <i class="fa-solid fa-motorcycle w-4 text-center text-base"></i>
+    <span>Delivery Partners</span>
+</NavLink>
+
+<div class="pt-3">
+    <p class="text-slate-500 text-xs font-semibold uppercase tracking-widest px-3 pb-2">System</p>
+    <NavLink href="settings" class="nav-item group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-all text-sm font-medium" ActiveClass="!bg-brand !text-white shadow-md">
+        <i class="fa-solid fa-gear w-4 text-center text-base"></i>
+        <span>Settings</span>
+    </NavLink>
 </div>
 
