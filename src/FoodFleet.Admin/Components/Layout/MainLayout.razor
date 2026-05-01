@@ -79,3 +79,21 @@
     <a href="" class="ml-2 underline">Reload</a>
     <span class="dismiss ml-3 cursor-pointer">✕</span>
 </div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        // Skip auth check on public pages
+        var path = new Uri(Nav.Uri).AbsolutePath;
+        if (path.StartsWith("/login", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/logout", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        // JS interop is available here (OnAfterRender only fires interactively)
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        if (!(authState.User.Identity?.IsAuthenticated ?? false))
+            Nav.NavigateTo("/login");
+    }
+}

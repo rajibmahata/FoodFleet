@@ -1,6 +1,7 @@
 @page "/orders"
 @rendermode InteractiveServer
 @attribute [Authorize]
+@inherits FoodFleet.Admin.Components.AuthenticatedComponentBase
 @inject AdminApiClient Api
 
 <PageTitle>Orders – FoodFleet Admin</PageTitle>

@@ -30,7 +30,9 @@ public class AdminApiClient(HttpClient http, ILocalStorageService localStorage)
     {
         if (http.DefaultRequestHeaders.Authorization is null)
         {
-            var token = await GetTokenAsync();
+            string? token;
+            try { token = await GetTokenAsync(); }
+            catch (InvalidOperationException) { return; } // JS interop not available (SSR prerender)
             if (!string.IsNullOrEmpty(token))
                 http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }

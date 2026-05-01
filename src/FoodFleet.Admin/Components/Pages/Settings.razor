@@ -1,6 +1,7 @@
 @page "/settings"
 @rendermode InteractiveServer
 @attribute [Authorize]
+@inherits FoodFleet.Admin.Components.AuthenticatedComponentBase
 @inject AdminApiClient Api
 
 <PageTitle>Settings – FoodFleet Admin</PageTitle>

@@ -1,6 +1,7 @@
 @page "/dashboard"
 @rendermode InteractiveServer
 @attribute [Authorize]
+@inherits FoodFleet.Admin.Components.AuthenticatedComponentBase
 @inject AdminApiClient Api
 
 <PageTitle>Dashboard – FoodFleet Admin</PageTitle>

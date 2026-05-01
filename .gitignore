@@ -64,3 +64,5 @@ desktop.ini
 
 ## ── Blazor WASM publish ──────────────────────────────────────
 wwwroot/_framework/
+api_output.txt
+admin_output.txt

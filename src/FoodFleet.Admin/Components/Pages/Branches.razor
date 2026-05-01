@@ -1,6 +1,7 @@
 @page "/branches"
 @rendermode InteractiveServer
 @attribute [Authorize]
+@inherits FoodFleet.Admin.Components.AuthenticatedComponentBase
 @inject AdminApiClient Api
 
 <PageTitle>Branches – FoodFleet Admin</PageTitle>
