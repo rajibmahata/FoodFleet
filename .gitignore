@@ -1,0 +1,66 @@
+## ── Build output ─────────────────────────────────────────────
+[Bb]in/
+[Oo]bj/
+out/
+publish/
+artifacts/
+
+## ── User-specific / IDE ──────────────────────────────────────
+.vs/
+.vscode/settings.json
+.vscode/launch.json
+*.user
+*.suo
+*.userosscache
+*.userprefs
+*.DotSettings.user
+
+## ── Rider ────────────────────────────────────────────────────
+.idea/
+*.sln.iml
+
+## ── .NET / NuGet ─────────────────────────────────────────────
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+packages/
+!**/packages/build/**
+
+## ── Sensitive / environment-specific config ──────────────────
+# Keep appsettings.json (non-sensitive defaults), ignore environment overrides
+appsettings.Development.json
+appsettings.Staging.json
+appsettings.Production.json
+appsettings.*.Local.json
+.env
+.env.*
+secrets.json
+**/secrets/**
+
+## ── Logs ─────────────────────────────────────────────────────
+logs/
+*.log
+Serilog/
+
+## ── Test results ─────────────────────────────────────────────
+TestResults/
+coverage/
+*.coveragexml
+*.coverage
+
+## ── Migrations snapshots generated at runtime ────────────────
+# Keep migration files — remove only EF design-time temp files
+*.ef
+
+## ── OS-specific ──────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+## ── Docker ───────────────────────────────────────────────────
+.env.docker
+
+## ── Blazor WASM publish ──────────────────────────────────────
+wwwroot/_framework/

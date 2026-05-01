@@ -1,0 +1,545 @@
+@page "/menu"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@inject AdminApiClient Api
+
+<PageTitle>Menu – FoodFleet Admin</PageTitle>
+
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-800">Menu Management</h1>
+        <p class="text-sm text-slate-500 mt-0.5">Manage categories and items per branch</p>
+    </div>
+    <div class="flex items-center gap-3">
+        <button class="flex items-center gap-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 text-sm font-medium transition-colors disabled:opacity-40"
+                @onclick="ExportExcel" disabled="@(_selectedBranchId == Guid.Empty)">
+            <i class="fa-solid fa-file-arrow-down"></i> Export Excel
+        </button>
+        <label class="flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-dark text-white px-4 py-2 text-sm font-semibold transition-colors cursor-pointer">
+            <i class="fa-solid fa-file-arrow-up"></i> Import Excel
+            <InputFile OnChange="ImportExcel" accept=".xlsx" class="hidden" />
+        </label>
+    </div>
+</div>
+
+@if (_branches.Count > 0)
+{
+    <div class="mb-6 max-w-xs">
+        <select class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                @onchange="OnBranchChanged">
+            <option value="">— Select Branch —</option>
+            @foreach (var b in _branches)
+            {
+                <option value="@b.Id">@b.Name</option>
+            }
+        </select>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+        <i class="fa-solid fa-circle-exclamation"></i> @_error
+    </div>
+}
+@if (!string.IsNullOrEmpty(_success))
+{
+    <div class="mb-4 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700 flex items-center gap-2">
+        <i class="fa-solid fa-circle-check"></i> @_success
+    </div>
+}
+
+@if (_selectedBranchId != Guid.Empty)
+{
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-slate-700">Categories</h2>
+        <button class="flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-dark text-white px-4 py-2 text-sm font-semibold transition-colors"
+                @onclick="OpenCreateCategory">
+            <i class="fa-solid fa-plus"></i> Category
+        </button>
+    </div>
+
+    @if (_loadingMenu)
+    {
+        <div class="flex justify-center py-12">
+            <div class="flex flex-col items-center gap-3 text-slate-400">
+                <i class="fa-solid fa-circle-notch fa-spin fa-2x"></i>
+                <span class="text-sm">Loading menu...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        @foreach (var cat in _categories)
+        {
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 mb-4 overflow-hidden">
+                <div class="flex items-center justify-between px-5 py-3 bg-slate-50 border-b border-slate-100">
+                    <div class="flex items-center gap-3">
+                        <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-brand/10 text-brand">
+                            <i class="fa-solid fa-layer-group text-sm"></i>
+                        </span>
+                        <span class="font-semibold text-slate-800">@cat.Name</span>
+                        <span class="text-xs text-slate-500 bg-slate-200 rounded-full px-2 py-0.5">
+                            @(_items.ContainsKey(cat.Id) ? _items[cat.Id].Count : 0) items
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button class="text-xs rounded-lg border border-slate-300 hover:bg-white px-3 py-1.5 text-slate-600 font-medium transition-colors"
+                                @onclick="() => OpenEditCategory(cat)">
+                            <i class="fa-solid fa-pen-to-square mr-1"></i>Edit
+                        </button>
+                        <button class="text-xs rounded-lg border border-red-200 hover:bg-red-50 text-red-600 px-3 py-1.5 font-medium transition-colors"
+                                @onclick="() => ConfirmDeleteCategory(cat)">
+                            <i class="fa-solid fa-trash mr-1"></i>Delete
+                        </button>
+                        <button class="text-xs rounded-lg bg-brand hover:bg-brand-dark text-white px-3 py-1.5 font-semibold transition-colors"
+                                @onclick="() => OpenCreateItem(cat)">
+                            <i class="fa-solid fa-plus mr-1"></i>Add Item
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    @if (_items.ContainsKey(cat.Id) && _items[cat.Id].Count > 0)
+                    {
+                        <table class="w-full text-sm">
+                            <thead class="bg-slate-50/60 border-b border-slate-100">
+                                <tr>
+                                    <th class="px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Name</th>
+                                    <th class="px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Price</th>
+                                    <th class="px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Stock</th>
+                                    <th class="px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Available</th>
+                                    <th class="px-5 py-2.5"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in _items[cat.Id])
+                                {
+                                    <tr class="border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                        <td class="px-5 py-3 font-medium text-slate-800">@item.Name</td>
+                                        <td class="px-5 py-3 text-slate-600 font-semibold">₹@item.Price.ToString("N2")</td>
+                                        <td class="px-5 py-3">
+                                            <input type="number"
+                                                   class="w-20 rounded-lg border border-slate-300 px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                                                   value="@item.StockCount"
+                                                   @onchange="e => UpdateStock(item, e)" />
+                                        </td>
+                                        <td class="px-5 py-3">
+                                            <label class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" class="sr-only peer" checked="@item.IsAvailable"
+                                                       @onchange="e => ToggleAvailability(item, e)" />
+                                                <div class="w-10 h-5 bg-slate-200 peer-checked:bg-brand rounded-full transition-colors
+                                                            after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-4 after:h-4
+                                                            after:bg-white after:rounded-full after:transition-transform
+                                                            peer-checked:after:translate-x-5"></div>
+                                            </label>
+                                        </td>
+                                        <td class="px-5 py-3 text-right">
+                                            <div class="flex items-center justify-end gap-2">
+                                                <button class="text-xs rounded-lg border border-slate-300 hover:bg-slate-50 px-3 py-1.5 text-slate-600 font-medium transition-colors"
+                                                        @onclick="() => OpenEditItem(item)">
+                                                    Edit
+                                                </button>
+                                                <button class="text-xs rounded-lg border border-red-200 hover:bg-red-50 text-red-600 px-3 py-1.5 font-medium transition-colors"
+                                                        @onclick="() => ConfirmDeleteItem(item)">
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <div class="px-5 py-8 text-center text-sm text-slate-400">
+                            <i class="fa-solid fa-bowl-food mb-2 text-xl block"></i>
+                            No items in this category yet.
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (_categories.Count == 0)
+        {
+            <div class="rounded-2xl bg-white border border-slate-100 shadow-sm py-16 text-center text-slate-400">
+                <i class="fa-solid fa-layer-group text-4xl mb-3 block"></i>
+                <p class="text-sm">No categories yet. Create one to start building the menu.</p>
+            </div>
+        }
+    }
+}
+else
+{
+    <div class="rounded-2xl bg-white border border-slate-100 shadow-sm py-16 text-center text-slate-400">
+        <i class="fa-solid fa-store text-4xl mb-3 block"></i>
+        <p class="text-sm">Select a branch to manage its menu.</p>
+    </div>
+}
+
+@* ─── Category Modal ─── *@
+@if (_showCatModal)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                <h2 class="text-lg font-semibold text-slate-800">@(_editCatId == null ? "New Category" : "Edit Category")</h2>
+                <button @onclick="() => _showCatModal = false"
+                        class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="px-6 py-5 space-y-4">
+                @if (!string.IsNullOrEmpty(_catModalError))
+                {
+                    <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">@_catModalError</div>
+                }
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Name *</label>
+                    <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                           @bind="_catName" placeholder="e.g. Starters" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Sort Order</label>
+                    <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                           type="number" @bind="_catSortOrder" />
+                </div>
+            </div>
+            <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
+                <button @onclick="() => _showCatModal = false"
+                        class="rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 text-sm font-semibold transition-colors">
+                    Cancel
+                </button>
+                <button @onclick="SaveCategory" disabled="@_saving"
+                        class="flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-dark text-white px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-60">
+                    @if (_saving) { <i class="fa-solid fa-circle-notch fa-spin"></i> }
+                    Save
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* ─── Item Modal ─── *@
+@if (_showItemModal)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+                <h2 class="text-lg font-semibold text-slate-800">@(_editItemId == null ? "New Menu Item" : "Edit Menu Item")</h2>
+                <button @onclick="() => _showItemModal = false"
+                        class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="px-6 py-5 space-y-4">
+                @if (!string.IsNullOrEmpty(_itemModalError))
+                {
+                    <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">@_itemModalError</div>
+                }
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Name *</label>
+                        <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                               @bind="_itemForm.Name" placeholder="e.g. Butter Chicken" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Price (₹) *</label>
+                        <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                               type="number" step="0.01" @bind="_itemForm.Price" />
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                    <textarea class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand resize-none"
+                              rows="2" @bind="_itemForm.Description"></textarea>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Category</label>
+                        <select class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                                @bind="_itemForm.CategoryId">
+                            @foreach (var c in _categories)
+                            {
+                                <option value="@c.Id">@c.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Prep Time (min)</label>
+                        <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                               type="number" @bind="_itemForm.PreparationTimeMinutes" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Stock Count</label>
+                        <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                               type="number" @bind="_itemForm.StockCount" />
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Spice Level (0–5)</label>
+                        <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                               type="number" min="0" max="5" @bind="_itemForm.SpiceLevel" />
+                    </div>
+                    <div class="flex items-end gap-5 pb-1">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" class="w-4 h-4 rounded border-slate-300 accent-brand" id="chkVeg" @bind="_itemForm.IsVegetarian" />
+                            <span class="text-sm text-slate-700">Vegetarian</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" class="w-4 h-4 rounded border-slate-300 accent-brand" id="chkVegan" @bind="_itemForm.IsVegan" />
+                            <span class="text-sm text-slate-700">Vegan</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" class="w-4 h-4 rounded border-slate-300 accent-brand" id="chkGF" @bind="_itemForm.IsGlutenFree" />
+                            <span class="text-sm text-slate-700">GF</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
+                <button @onclick="() => _showItemModal = false"
+                        class="rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 text-sm font-semibold transition-colors">
+                    Cancel
+                </button>
+                <button @onclick="SaveItem" disabled="@_saving"
+                        class="flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-dark text-white px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-60">
+                    @if (_saving) { <i class="fa-solid fa-circle-notch fa-spin"></i> }
+                    Save Item
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* ─── Delete Confirm ─── *@
+@if (_deleteMessage is not null)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4">
+            <div class="flex items-center gap-4 px-6 py-5 border-b border-slate-100">
+                <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-500 shrink-0">
+                    <i class="fa-solid fa-trash"></i>
+                </div>
+                <div>
+                    <h2 class="text-base font-semibold text-slate-800">Confirm Delete</h2>
+                    <p class="text-sm text-slate-500 mt-0.5">This action cannot be undone.</p>
+                </div>
+            </div>
+            <div class="px-6 py-4 text-sm text-slate-600">@_deleteMessage</div>
+            <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
+                <button @onclick="() => _deleteAction = null"
+                        class="rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 text-sm font-semibold transition-colors">
+                    Cancel
+                </button>
+                <button @onclick="ExecuteDelete"
+                        class="rounded-lg bg-red-500 hover:bg-red-600 text-white px-4 py-2 text-sm font-semibold transition-colors">
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<BranchDto> _branches = new();
+    private Guid _selectedBranchId = Guid.Empty;
+    private bool _loadingMenu;
+    private string _error = string.Empty;
+    private string _success = string.Empty;
+    private List<MenuCategoryDto> _categories = new();
+    private Dictionary<Guid, List<MenuItemDto>> _items = new();
+    private bool _saving;
+
+    // Category modal
+    private bool _showCatModal;
+    private Guid? _editCatId;
+    private string _catName = string.Empty;
+    private int _catSortOrder;
+    private string _catModalError = string.Empty;
+
+    // Item modal
+    private bool _showItemModal;
+    private Guid? _editItemId;
+    private Guid _itemCategoryId;
+    private ItemFormModel _itemForm = new();
+    private string _itemModalError = string.Empty;
+
+    // Delete
+    private string? _deleteMessage;
+    private Func<Task>? _deleteAction;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var r = await Api.GetBranchesAsync();
+        if (r.IsSuccess) _branches = r.Data ?? new();
+    }
+
+    private async Task OnBranchChanged(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var id))
+        {
+            _selectedBranchId = id;
+            await LoadMenu();
+        }
+        else
+        {
+            _selectedBranchId = Guid.Empty;
+            _categories = new();
+            _items = new();
+        }
+    }
+
+    private async Task LoadMenu()
+    {
+        _loadingMenu = true;
+        _error = string.Empty;
+        var catResult = await Api.GetMenuCategoriesAsync(_selectedBranchId);
+        if (!catResult.IsSuccess) { _error = catResult.Error ?? "Failed to load categories."; _loadingMenu = false; return; }
+        _categories = catResult.Data ?? new();
+
+        _items = new();
+        foreach (var cat in _categories)
+        {
+            var itemResult = await Api.GetMenuItemsAsync(cat.Id);
+            _items[cat.Id] = itemResult.IsSuccess ? (itemResult.Data ?? new()) : new();
+        }
+        _loadingMenu = false;
+    }
+
+    // ── Category actions ──
+    private void OpenCreateCategory() { _editCatId = null; _catName = string.Empty; _catSortOrder = 0; _catModalError = string.Empty; _showCatModal = true; }
+    private void OpenEditCategory(MenuCategoryDto c) { _editCatId = c.Id; _catName = c.Name; _catSortOrder = c.SortOrder; _catModalError = string.Empty; _showCatModal = true; }
+
+    private async Task SaveCategory()
+    {
+        if (string.IsNullOrWhiteSpace(_catName)) { _catModalError = "Name required."; return; }
+        _saving = true; _catModalError = string.Empty;
+        ApiResult<MenuCategoryDto> r;
+        if (_editCatId is null)
+            r = await Api.CreateMenuCategoryAsync(new CreateMenuCategoryRequest(_selectedBranchId, _catName, _catSortOrder));
+        else
+            r = await Api.UpdateMenuCategoryAsync(_editCatId.Value, new UpdateMenuCategoryRequest(_catName, _catSortOrder));
+        _saving = false;
+        if (r.IsSuccess) { _showCatModal = false; await LoadMenu(); }
+        else _catModalError = r.Error ?? "Save failed.";
+    }
+
+    private void ConfirmDeleteCategory(MenuCategoryDto c)
+    {
+        _deleteMessage = $"Delete category '{c.Name}'? All items inside will also be deleted.";
+        _deleteAction = async () =>
+        {
+            var r = await Api.DeleteMenuCategoryAsync(c.Id);
+            if (!r.IsSuccess) _error = r.Error ?? "Delete failed.";
+            else await LoadMenu();
+        };
+    }
+
+    // ── Item actions ──
+    private void OpenCreateItem(MenuCategoryDto cat) { _editItemId = null; _itemCategoryId = cat.Id; _itemForm = new ItemFormModel { CategoryId = cat.Id }; _itemModalError = string.Empty; _showItemModal = true; }
+    private void OpenEditItem(MenuItemDto item)
+    {
+        _editItemId = item.Id;
+        _itemCategoryId = item.CategoryId;
+        _itemForm = new ItemFormModel
+        {
+            Name = item.Name, Description = item.Description ?? string.Empty, Price = item.Price,
+            CategoryId = item.CategoryId, PreparationTimeMinutes = item.PreparationTimeMinutes,
+            StockCount = item.StockCount, IsVegetarian = item.IsVegetarian,
+            IsVegan = item.IsVegan, IsGlutenFree = item.IsGlutenFree, SpiceLevel = item.SpiceLevel
+        };
+        _itemModalError = string.Empty;
+        _showItemModal = true;
+    }
+
+    private async Task SaveItem()
+    {
+        if (string.IsNullOrWhiteSpace(_itemForm.Name)) { _itemModalError = "Name required."; return; }
+        _saving = true; _itemModalError = string.Empty;
+        ApiResult<MenuItemDto> r;
+        if (_editItemId is null)
+            r = await Api.CreateMenuItemAsync(new CreateMenuItemRequest(
+                _itemForm.CategoryId, _itemForm.Name, _itemForm.Description, _itemForm.Price,
+                _itemForm.PreparationTimeMinutes, _itemForm.StockCount, _itemForm.IsVegetarian,
+                _itemForm.IsVegan, _itemForm.IsGlutenFree, _itemForm.SpiceLevel));
+        else
+            r = await Api.UpdateMenuItemAsync(_editItemId.Value, new UpdateMenuItemRequest(
+                _itemForm.Name, _itemForm.Description, _itemForm.Price,
+                _itemForm.PreparationTimeMinutes, _itemForm.IsVegetarian,
+                _itemForm.IsVegan, _itemForm.IsGlutenFree, _itemForm.SpiceLevel));
+        _saving = false;
+        if (r.IsSuccess) { _showItemModal = false; await LoadMenu(); }
+        else _itemModalError = r.Error ?? "Save failed.";
+    }
+
+    private void ConfirmDeleteItem(MenuItemDto item)
+    {
+        _deleteMessage = $"Delete menu item '{item.Name}'?";
+        _deleteAction = async () =>
+        {
+            var r = await Api.DeleteMenuItemAsync(item.Id);
+            if (!r.IsSuccess) _error = r.Error ?? "Delete failed.";
+            else await LoadMenu();
+        };
+    }
+
+    private async Task UpdateStock(MenuItemDto item, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var stock))
+        {
+            var r = await Api.UpdateStockAsync(item.Id, stock);
+            if (!r.IsSuccess) _error = r.Error ?? "Failed to update stock.";
+            else await LoadMenu();
+        }
+    }
+
+    private async Task ToggleAvailability(MenuItemDto item, ChangeEventArgs e)
+    {
+        var available = (bool)(e.Value ?? false);
+        var r = await Api.SetAvailabilityAsync(item.Id, available);
+        if (!r.IsSuccess) _error = r.Error ?? "Failed to update availability.";
+        else await LoadMenu();
+    }
+
+    private async Task ExportExcel()
+    {
+        _success = string.Empty; _error = string.Empty;
+        var r = await Api.ExportMenuExcelAsync(_selectedBranchId);
+        if (r.IsSuccess) _success = "Export successful. File downloaded.";
+        else _error = r.Error ?? "Export failed.";
+    }
+
+    private async Task ImportExcel(InputFileChangeEventArgs e)
+    {
+        _success = string.Empty; _error = string.Empty;
+        var file = e.File;
+        using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+        var r = await Api.ImportMenuExcelAsync(_selectedBranchId, stream, file.Name);
+        if (r.IsSuccess) { _success = "Import successful."; await LoadMenu(); }
+        else _error = r.Error ?? "Import failed.";
+    }
+
+    private async Task ExecuteDelete()
+    {
+        if (_deleteAction is not null) await _deleteAction();
+        _deleteAction = null;
+        _deleteMessage = null;
+    }
+
+    private class ItemFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+        public Guid CategoryId { get; set; }
+        public int PreparationTimeMinutes { get; set; } = 15;
+        public int? StockCount { get; set; }
+        public bool IsVegetarian { get; set; }
+        public bool IsVegan { get; set; }
+        public bool IsGlutenFree { get; set; }
+        public int SpiceLevel { get; set; }
+    }
+}

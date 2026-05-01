@@ -1,0 +1,123 @@
+@page "/login"
+@rendermode InteractiveServer
+@layout FoodFleet.Admin.Components.Layout.MainLayout
+@inject AdminApiClient Api
+@inject AdminAuthStateProvider AuthProvider
+@inject NavigationManager Nav
+
+<PageTitle>Login – FoodFleet Admin</PageTitle>
+
+<div class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+    <div class="w-full max-w-md">
+        <!-- Logo -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-brand rounded-2xl shadow-2xl mb-4">
+                <i class="fa-solid fa-utensils text-white text-2xl"></i>
+            </div>
+            <h1 class="text-white text-2xl font-bold">FoodFleet Admin</h1>
+            <p class="text-slate-400 text-sm mt-1">Sign in to your admin panel</p>
+        </div>
+
+        <!-- Card -->
+        <div class="bg-white rounded-2xl shadow-2xl p-8">
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <div class="mb-4 flex items-center gap-2.5 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
+                    <i class="fa-solid fa-circle-exclamation flex-shrink-0"></i>
+                    <span>@_error</span>
+                </div>
+            }
+
+            <EditForm Model="_model" OnValidSubmit="HandleLogin" FormName="login">
+                <DataAnnotationsValidator />
+
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">Username</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                            <i class="fa-regular fa-user text-sm"></i>
+                        </span>
+                        <InputText @bind-Value="_model.Username"
+                                   class="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-colors"
+                                   placeholder="admin" />
+                    </div>
+                    <ValidationMessage For="@(() => _model.Username)" class="text-red-500 text-xs mt-1" />
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                            <i class="fa-solid fa-lock text-sm"></i>
+                        </span>
+                        <InputText @bind-Value="_model.Password" type="password"
+                                   class="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-colors"
+                                   placeholder="••••••••" />
+                    </div>
+                    <ValidationMessage For="@(() => _model.Password)" class="text-red-500 text-xs mt-1" />
+                </div>
+
+                <button type="submit"
+                        disabled="@_loading"
+                        class="w-full bg-brand hover:bg-brand-dark text-white font-semibold py-2.5 rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm shadow-lg shadow-orange-200">
+                    @if (_loading)
+                    {
+                        <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        <span>Signing in...</span>
+                    }
+                    else
+                    {
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                        <span>Sign In</span>
+                    }
+                </button>
+            </EditForm>
+        </div>
+
+        <p class="text-center text-slate-500 text-xs mt-6">&copy; @DateTime.Now.Year FoodFleet. All rights reserved.</p>
+    </div>
+</div>
+
+@code {
+    private LoginModel _model = new();
+    private string _error = string.Empty;
+    private bool _loading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+            Nav.NavigateTo("/dashboard");
+    }
+
+    private async Task HandleLogin()
+    {
+        _loading = true;
+        _error = string.Empty;
+
+        var result = await Api.LoginAsync(new AdminLoginRequest(_model.Username, _model.Password));
+        if (result.IsSuccess && result.Data is not null)
+        {
+            await AuthProvider.MarkUserAsAuthenticated(result.Data.AccessToken);
+            Nav.NavigateTo("/dashboard");
+        }
+        else
+        {
+            _error = result.Error ?? "Login failed. Check your credentials.";
+        }
+
+        _loading = false;
+    }
+
+    private class LoginModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Username { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Password { get; set; } = string.Empty;
+    }
+}

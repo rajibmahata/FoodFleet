@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^\\$word = New-Object -ComObject Word\\.Application\n\\$word\\.Visible = \\$false\n\\$doc = \\$word\\.Documents\\.Open\\(\"d:\\\\repos\\\\FoodFleet\\\\FoodFleet_Architecture_v2_with_diagrams\\.docx\"\\)\n\\$text = \\$doc\\.Content\\.Text\n\\$doc\\.Close\\(\\)\n\\$word\\.Quit\\(\\)\n\\$text \\| Out-File \"d:\\\\repos\\\\FoodFleet\\\\arch_text\\.txt\" -Encoding UTF8\nWrite-Host \"Done\"\n$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

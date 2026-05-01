@@ -1,0 +1,144 @@
+@page "/settings"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@inject AdminApiClient Api
+
+<PageTitle>Settings – FoodFleet Admin</PageTitle>
+
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-800">Settings</h1>
+        <p class="text-sm text-slate-500 mt-0.5">Configure platform-wide preferences</p>
+    </div>
+    <button @onclick="SaveAll" disabled="@_saving"
+            class="flex items-center gap-2 rounded-lg bg-brand hover:bg-brand-dark text-white px-5 py-2.5 text-sm font-semibold transition-colors disabled:opacity-60">
+        @if (_saving) { <i class="fa-solid fa-circle-notch fa-spin"></i> }
+        <i class="fa-solid fa-floppy-disk"></i> Save All
+    </button>
+</div>
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+        <i class="fa-solid fa-circle-exclamation"></i> @_error
+    </div>
+}
+@if (!string.IsNullOrEmpty(_success))
+{
+    <div class="mb-4 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700 flex items-center gap-2">
+        <i class="fa-solid fa-circle-check"></i> @_success
+    </div>
+}
+
+@if (_loading)
+{
+    <div class="flex justify-center py-16">
+        <div class="flex flex-col items-center gap-3 text-slate-400">
+            <i class="fa-solid fa-circle-notch fa-spin fa-2x"></i>
+            <span class="text-sm">Loading settings...</span>
+        </div>
+    </div>
+}
+else if (_settings.Count == 0)
+{
+    <div class="rounded-2xl bg-white border border-slate-100 shadow-sm py-16 text-center text-slate-400">
+        <i class="fa-solid fa-gear text-4xl mb-3 block"></i>
+        <p class="text-sm">No settings configured yet.</p>
+    </div>
+}
+else
+{
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 divide-y divide-slate-100">
+        @foreach (var group in _grouped.Keys)
+        {
+            <div class="px-6 py-5">
+                <div class="flex items-center gap-3 mb-5">
+                    <span class="text-xs font-bold uppercase tracking-widest text-slate-400">@group</span>
+                    <div class="h-px flex-1 bg-slate-100"></div>
+                </div>
+                <div class="space-y-5">
+                    @foreach (var s in _grouped[group])
+                    {
+                        <div class="flex items-center gap-6">
+                            <div class="w-72 shrink-0">
+                                <label class="text-sm font-semibold text-slate-700" title="@s.Key">@FormatKey(s.Key)</label>
+                                <p class="text-xs text-slate-400 mt-0.5 font-mono">@s.Key</p>
+                            </div>
+                            <div class="flex-1 max-w-sm">
+                                @if (IsBoolKey(s.Key))
+                                {
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" class="sr-only peer" checked="@(s.Value == "true")"
+                                               @onchange="e => OnBoolToggle(s, e)" />
+                                        <div class="w-11 h-6 bg-slate-200 peer-checked:bg-brand rounded-full transition-colors
+                                                    after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5
+                                                    after:bg-white after:rounded-full after:transition-transform
+                                                    peer-checked:after:translate-x-5"></div>
+                                    </label>
+                                }
+                                else
+                                {
+                                    <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                                           value="@s.Value"
+                                           @onchange="e => s.Value = e.Value?.ToString() ?? string.Empty" />
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<SettingDto> _settings = new();
+    private Dictionary<string, List<SettingDto>> _grouped = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string _error = string.Empty;
+    private string _success = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var r = await Api.GetSettingsAsync();
+        if (r.IsSuccess)
+        {
+            _settings = r.Data ?? new();
+            BuildGroups();
+        }
+        else _error = r.Error ?? "Failed to load settings.";
+        _loading = false;
+    }
+
+    private void BuildGroups()
+    {
+        _grouped = _settings
+            .GroupBy(s => s.Key.Contains('.') ? s.Key.Split('.')[0].ToUpper() : "GENERAL")
+            .ToDictionary(g => g.Key, g => g.ToList());
+    }
+
+    private async Task SaveAll()
+    {
+        _saving = true; _error = string.Empty; _success = string.Empty;
+        var updates = _settings.Select(s => new SettingUpsertItem(s.Key, s.Value)).ToList();
+        var r = await Api.BulkUpsertSettingsAsync(updates);
+        _saving = false;
+        if (r.IsSuccess) _success = "Settings saved successfully.";
+        else _error = r.Error ?? "Failed to save settings.";
+    }
+
+    private static bool IsBoolKey(string key) =>
+        key.Contains("enabled", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("active", StringComparison.OrdinalIgnoreCase);
+
+    private static void OnBoolToggle(SettingDto s, ChangeEventArgs e)
+        => s.Value = ((bool)(e.Value ?? false)) ? "true" : "false";
+
+    private static string FormatKey(string key)
+    {
+        var part = key.Contains('.') ? key[(key.LastIndexOf('.') + 1)..] : key;
+        return string.Concat(part.Select((c, i) => i > 0 && char.IsUpper(c) ? " " + c : c.ToString()))
+                     .Replace("_", " ");
+    }
+}

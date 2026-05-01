@@ -1,0 +1,12 @@
+@page "/logout"
+@rendermode InteractiveServer
+@inject AdminAuthStateProvider AuthProvider
+@inject NavigationManager Nav
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthProvider.MarkUserAsLoggedOut();
+        Nav.NavigateTo("/login");
+    }
+}
