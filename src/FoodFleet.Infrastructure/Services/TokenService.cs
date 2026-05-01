@@ -10,10 +10,10 @@ namespace FoodFleet.Infrastructure.Services;
 
 public class TokenService(IConfiguration config) : ITokenService
 {
-    private readonly string _secret = config["Jwt:Secret"] ?? throw new InvalidOperationException("JWT secret not configured.");
+    private readonly string _secret = config["Jwt:Key"] ?? throw new InvalidOperationException("JWT secret not configured.");
     private readonly string _issuer = config["Jwt:Issuer"] ?? "FoodFleet";
     private readonly string _audience = config["Jwt:Audience"] ?? "FoodFleet";
-    private readonly int _accessTokenMinutes = int.TryParse(config["Jwt:AccessTokenMinutes"], out var m) ? m : 15;
+    private readonly int _accessTokenMinutes = int.TryParse(config["Jwt:AccessTokenExpiryMinutes"], out var m) ? m : 15;
 
     public TokenResult GenerateCustomerTokens(Guid customerId, string email, string name)
     {
